@@ -109,6 +109,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBody: false, // Ensure layout pushes up above bottom navigation
       appBar: AppBar(
         backgroundColor: AppColors.background.withOpacity(0.95),
         elevation: 0,

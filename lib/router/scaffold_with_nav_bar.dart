@@ -28,46 +28,52 @@ class ScaffoldWithNavBar extends StatelessWidget {
     return Scaffold(
       body: navigationShell,
       extendBody: true,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: Container(
-        margin: const EdgeInsets.only(top: 24),
-        height: 58,
-        width: 58,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: AppColors.primaryGradient,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.5),
-              blurRadius: 16,
-              spreadRadius: 2,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              context.push('/memories');
-            },
-            child: const Icon(
-              Icons.add_photo_alternate_rounded,
-              size: 26,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ),
+      floatingActionButtonLocation: (navigationShell.currentIndex == 0 || navigationShell.currentIndex == 3)
+          ? FloatingActionButtonLocation.centerDocked
+          : null,
+      floatingActionButton: (navigationShell.currentIndex == 0 || navigationShell.currentIndex == 3)
+          ? Container(
+              margin: const EdgeInsets.only(top: 24),
+              height: 58,
+              width: 58,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppColors.primaryGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.5),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    context.push('/memories');
+                  },
+                  child: const Icon(
+                    Icons.add_photo_alternate_rounded,
+                    size: 26,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            )
+          : null,
       bottomNavigationBar: ClipRect(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: BottomAppBar(
             color: AppColors.surface.withOpacity(0.88),
-            shape: const CircularNotchedRectangle(),
+            shape: (navigationShell.currentIndex == 0 || navigationShell.currentIndex == 3)
+                ? const CircularNotchedRectangle()
+                : null,
             notchMargin: 8,
             elevation: 0,
             padding: EdgeInsets.zero,
@@ -77,7 +83,8 @@ class ScaffoldWithNavBar extends StatelessWidget {
                 children: [
                   _buildNavItem(0, Icons.home_rounded, AppStrings.navHome),
                   _buildNavItem(1, Icons.chat_bubble_rounded, AppStrings.navChat),
-                  const SizedBox(width: 52), // Space for FAB notch
+                  if (navigationShell.currentIndex == 0 || navigationShell.currentIndex == 3)
+                    const SizedBox(width: 52), // Space for FAB notch
                   _buildNavItem(2, Icons.calendar_today_rounded, AppStrings.navCalendar),
                   _buildNavItem(3, Icons.person_rounded, AppStrings.navProfile),
                 ],

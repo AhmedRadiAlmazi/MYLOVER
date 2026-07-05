@@ -68,7 +68,7 @@ import '../features/stories/screens/stories_screen.dart';
 // ── Custom Page Transition ────────────────────────────────────────
 Page<T> _slidePage<T>(BuildContext context, GoRouterState state, Widget child) {
   return CustomTransitionPage<T>(
-    key: state.pageKey,
+    key: ValueKey('${state.pageKey.toString()}_${child.hashCode}'),
     child: child,
     transitionDuration: const Duration(milliseconds: 300),
     reverseTransitionDuration: const Duration(milliseconds: 250),

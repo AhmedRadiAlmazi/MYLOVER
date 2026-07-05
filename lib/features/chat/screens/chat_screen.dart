@@ -113,6 +113,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBody: false, // Ensure layout pushes up above bottom navigation
+      resizeToAvoidBottomInset: true, // Allow keyboard to push up chat bar
       appBar: CustomAppBar(
         title: partnerName,
         backgroundColor: AppColors.background.withOpacity(0.9),

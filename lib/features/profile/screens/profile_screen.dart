@@ -86,8 +86,8 @@ Future<void> _showEditProfileDialog(BuildContext context, WidgetRef ref, UserMod
                   final userService = ref.read(userServiceProvider);
                   await userService.updateUserProfile(user.id, nameController.text.trim(), avatarUrl: newAvatarUrl);
                   
-                  if (context.mounted) {
-                    Navigator.pop(ctx, true);
+                  if (ctx.mounted) {
+                    Navigator.of(ctx).pop(true);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('تم تحديث الملف الشخصي بنجاح'), backgroundColor: AppColors.success),
                     );
@@ -149,7 +149,11 @@ class ProfileScreen extends ConsumerWidget {
                     backgroundColor: AppColors.background.withOpacity(0.95),
                     leading: IconButton(
                       icon: const Icon(Icons.arrow_back_ios_rounded, color: AppColors.textPrimary),
-                      onPressed: () => context.pop(),
+                      onPressed: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        }
+                      },
                     ),
                     actions: [
                       IconButton(

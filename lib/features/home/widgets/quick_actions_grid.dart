@@ -38,7 +38,7 @@ class QuickActionsGrid extends StatelessWidget {
         glowColor: AppColors.primary,
         onTap: () {
           HapticFeedback.selectionClick();
-          context.push('/chat');
+          context.go('/chat'); // Switch tab in shell
         },
       ),
       HomeQuickActionCard(
@@ -52,7 +52,7 @@ class QuickActionsGrid extends StatelessWidget {
         glowColor: AppColors.secondary,
         onTap: () {
           HapticFeedback.selectionClick();
-          context.push('/memories');
+          context.push('/memories'); // Memories is outside the shell stack, keep push
         },
       ),
       HomeQuickActionCard(
@@ -66,7 +66,7 @@ class QuickActionsGrid extends StatelessWidget {
         glowColor: const Color(0xFF52B788),
         onTap: () {
           HapticFeedback.selectionClick();
-          context.push('/diary');
+          context.push('/diary'); // Outside shell, keep push
         },
       ),
       HomeQuickActionCard(
@@ -80,7 +80,7 @@ class QuickActionsGrid extends StatelessWidget {
         glowColor: AppColors.info,
         onTap: () {
           HapticFeedback.selectionClick();
-          context.push('/calendar');
+          context.go('/calendar'); // Switch tab in shell
         },
       ),
       HomeQuickActionCard(

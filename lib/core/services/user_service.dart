@@ -1,5 +1,7 @@
 import 'dart:math';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_models.dart';
 
 class UserService {
@@ -13,6 +15,7 @@ class UserService {
   Future<void> createUserDocument(UserModel user) async {
     try {
       await _usersCollection.doc(user.id).set(user.toMap());
+      await _cacheUserLocally(user);
     } catch (e) {
       throw Exception('فشل في حفظ بيانات المستخدم: $e');
     }
@@ -23,21 +26,33 @@ class UserService {
     try {
       final doc = await _usersCollection.doc(uid).get();
       if (doc.exists && doc.data() != null) {
-        return UserModel.fromMap(doc.data()!);
+        final user = UserModel.fromMap(doc.data()!);
+        await _cacheUserLocally(user);
+        return user;
       }
-      return null;
+      return await _getLocalCachedUser(uid);
     } catch (e) {
+      // Fallback to local cache when offline
+      final localUser = await _getLocalCachedUser(uid);
+      if (localUser != null) return localUser;
       throw Exception('فشل في جلب بيانات المستخدم: $e');
     }
   }
 
   // جلب بيانات المستخدم كبث مباشر (Stream)
   Stream<UserModel?> getUserStream(String uid) {
+    // We fetch snapshots, and if it fails or yields error (like offline status),
+    // we fallback to emitting the local cached user data.
     return _usersCollection.doc(uid).snapshots().map((doc) {
       if (doc.exists && doc.data() != null) {
-        return UserModel.fromMap(doc.data()!);
+        final user = UserModel.fromMap(doc.data()!);
+        _cacheUserLocally(user);
+        return user;
       }
       return null;
+    }).handleError((error) async {
+      // Return cached user if firestore throws offline/permission error
+      return await _getLocalCachedUser(uid);
     });
   }
 
@@ -59,6 +74,24 @@ class UserService {
       final data = <String, dynamic>{'name': name};
       if (avatarUrl != null) data['avatarUrl'] = avatarUrl;
       await _usersCollection.doc(uid).update(data);
+      
+      // Update local cache as well
+      final local = await _getLocalCachedUser(uid);
+      if (local != null) {
+        final updatedUser = UserModel(
+          id: local.id,
+          name: name,
+          email: local.email,
+          avatarUrl: avatarUrl ?? local.avatarUrl,
+          partnerId: local.partnerId,
+          pairingCode: local.pairingCode,
+          publicKey: local.publicKey,
+          relationshipStart: local.relationshipStart,
+          isOnline: local.isOnline,
+          lastSeen: local.lastSeen,
+        );
+        await _cacheUserLocally(updatedUser);
+      }
     } catch (e) {
       throw Exception('فشل في تحديث الملف الشخصي: $e');
     }
@@ -70,7 +103,6 @@ class UserService {
       await _usersCollection.doc(uid).update({
         'partnerId': partnerId,
       });
-      // تحديث الشريك أيضاً إذا كان مطلوباً
       await _usersCollection.doc(partnerId).update({
         'partnerId': uid,
       });
@@ -111,5 +143,21 @@ class UserService {
     } catch (e) {
       throw Exception('فشل في البحث عن كود الربط: $e');
     }
+  }
+
+  // ── Local caching functions ────────────────────────────────────
+
+  Future<void> _cacheUserLocally(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('cached_user_model_${user.id}', jsonEncode(user.toMap()));
+  }
+
+  Future<UserModel?> _getLocalCachedUser(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonStr = prefs.getString('cached_user_model_$uid');
+    if (jsonStr != null) {
+      return UserModel.fromMap(jsonDecode(jsonStr));
+    }
+    return null;
   }
 }

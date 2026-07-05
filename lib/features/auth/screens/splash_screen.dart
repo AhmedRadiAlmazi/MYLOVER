@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,15 +36,31 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return;
     }
 
+    // Check if there is an offline cached session UID
+    final offlineActiveUid = prefs.getString('offline_active_uid');
     final authState = ref.read(authStateChangesProvider);
     
-    if (authState.value != null) {
-      // User is logged in
-      final user = ref.read(currentUserProvider).value;
-      if (user != null && user.partnerId != null && user.partnerId!.isNotEmpty) {
-        context.go('/home');
+    if (authState.value != null || offlineActiveUid != null) {
+      // User is logged in (either Firebase auth or offline cached session)
+      final activeUid = authState.value?.uid ?? offlineActiveUid!;
+      final cachedUserStr = prefs.getString('cached_user_model_$activeUid');
+      
+      if (cachedUserStr != null) {
+        final decoded = jsonDecode(cachedUserStr);
+        final partnerId = decoded['partnerId'];
+        if (partnerId != null && partnerId.toString().isNotEmpty) {
+          context.go('/home');
+        } else {
+          context.go('/pairing');
+        }
       } else {
-        context.go('/pairing');
+        // Fallback to provider if cache somehow missing
+        final user = ref.read(currentUserProvider).value;
+        if (user != null && user.partnerId != null && user.partnerId!.isNotEmpty) {
+          context.go('/home');
+        } else {
+          context.go('/pairing');
+        }
       }
     } else {
       // Not logged in

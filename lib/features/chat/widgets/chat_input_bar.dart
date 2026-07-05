@@ -186,14 +186,17 @@ class _ChatInputBarState extends State<ChatInputBar> {
           children: [
             _buildReplyPreview(),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // Attachment button on the far right/left
                   IconButton(
                     onPressed: _showAttachmentOptions,
-                    icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+                    icon: const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 26),
                   ),
+                  const SizedBox(width: 4),
+                  // Text input field
                   Expanded(
                     child: Container(
                       constraints: const BoxConstraints(maxHeight: 120),
@@ -207,21 +210,21 @@ class _ChatInputBarState extends State<ChatInputBar> {
                         children: [
                           IconButton(
                             onPressed: () {},
-                            icon: const Icon(Icons.emoji_emotions_outlined, color: AppColors.textHint),
+                            icon: const Icon(Icons.emoji_emotions_outlined, color: AppColors.textHint, size: 22),
                           ),
                           Expanded(
                             child: TextField(
                               controller: widget.controller,
                               maxLines: null,
                               textInputAction: TextInputAction.newline,
-                              style: GoogleFonts.tajawal(color: AppColors.textPrimary),
+                              style: GoogleFonts.tajawal(color: AppColors.textPrimary, fontSize: 15),
                               decoration: InputDecoration(
                                 hintText: 'اكتب رسالة...',
-                                hintStyle: GoogleFonts.tajawal(color: AppColors.textHint),
+                                hintStyle: GoogleFonts.tajawal(color: AppColors.textHint, fontSize: 14),
                                 border: InputBorder.none,
                                 enabledBorder: InputBorder.none,
                                 focusedBorder: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                               ),
                             ),
                           ),
@@ -230,7 +233,10 @@ class _ChatInputBarState extends State<ChatInputBar> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // Send/Mic button
                   Container(
+                    height: 44,
+                    width: 44,
                     decoration: BoxDecoration(
                       gradient: _isTyping ? AppColors.primaryGradient : null,
                       color: _isTyping ? null : AppColors.card,

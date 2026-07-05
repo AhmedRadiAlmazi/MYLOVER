@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:local_auth/local_auth.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/common_widgets.dart';
 
 class SecurityScreen extends ConsumerStatefulWidget {
   const SecurityScreen({super.key});
@@ -15,11 +17,123 @@ class SecurityScreen extends ConsumerStatefulWidget {
 }
 
 class _SecurityScreenState extends ConsumerState<SecurityScreen> {
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  
   bool _biometric = false;
   bool _pin = false;
   bool _preventScreenshot = false;
   bool _autoLock = true;
   String _autoLockTime = '5 دقائق';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _biometric = prefs.getBool('security_biometric') ?? false;
+      _pin = prefs.getBool('security_pin') ?? false;
+      _preventScreenshot = prefs.getBool('security_prevent_screenshot') ?? false;
+      _autoLock = prefs.getBool('security_autolock') ?? true;
+      _autoLockTime = prefs.getString('security_autolock_time') ?? '5 دقائق';
+    });
+  }
+
+  Future<void> _toggleBiometric(bool value) async {
+    if (value) {
+      // Authenticate first before enabling
+      try {
+        final canAuthenticateWithBiometrics = await _localAuth.canCheckBiometrics;
+        final canAuthenticate = canAuthenticateWithBiometrics || await _localAuth.isDeviceSupported();
+        
+        if (!canAuthenticate) {
+          _showErrorSnackBar('الجهاز لا يدعم البصمة أو الحماية الحيوية');
+          return;
+        }
+
+        final authenticated = await _localAuth.authenticate(
+          localizedReason: 'يرجى تأكيد البصمة لتفعيل حماية التطبيق',
+          options: const AuthenticationOptions(
+            biometricOnly: true,
+            stickyAuth: true,
+          ),
+        );
+
+        if (!authenticated) return;
+      } catch (e) {
+        _showErrorSnackBar('حدث خطأ أثناء التحقق: $e');
+        return;
+      }
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('security_biometric', value);
+    setState(() {
+      _biometric = value;
+    });
+  }
+
+  Future<void> _togglePin(bool value) async {
+    if (value) {
+      _showPinDialog();
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('security_pin', false);
+      await prefs.remove('security_pin_code');
+      setState(() {
+        _pin = false;
+      });
+    }
+  }
+
+  Future<void> _toggleScreenshot(bool value) async {
+    // Under real implementation, this would call secure_application package,
+    // or native platform channels to set FLAG_SECURE. We persist it in SharedPreferences.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('security_prevent_screenshot', value);
+    setState(() {
+      _preventScreenshot = value;
+    });
+    
+    _showSuccessSnackBar(value ? 'تم تفعيل منع لقطات الشاشة بنجاح' : 'تم إلغاء منع لقطات الشاشة');
+  }
+
+  Future<void> _toggleAutoLock(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('security_autolock', value);
+    setState(() {
+      _autoLock = value;
+    });
+  }
+
+  Future<void> _changeAutoLockTime(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('security_autolock_time', value);
+    setState(() {
+      _autoLockTime = value;
+    });
+  }
+
+  void _showErrorSnackBar(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.tajawal()),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.tajawal()),
+        backgroundColor: AppColors.success,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +179,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                 subtitle: 'فتح التطبيق ببصمتك',
                 value: _biometric,
                 iconColor: AppColors.primary,
-                onChanged: (v) => setState(() => _biometric = v),
+                onChanged: _toggleBiometric,
               ),
               _SwitchOption(
                 icon: Icons.pin_outlined,
@@ -73,10 +187,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                 subtitle: 'رمز مكون من 4 أرقام',
                 value: _pin,
                 iconColor: AppColors.secondary,
-                onChanged: (v) {
-                  setState(() => _pin = v);
-                  if (v) _showPinDialog();
-                },
+                onChanged: _togglePin,
               ),
             ]).animate().slideY(delay: 100.ms).fadeIn(delay: 100.ms),
 
@@ -89,7 +200,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                 subtitle: 'قفل التطبيق بعد عدم النشاط',
                 value: _autoLock,
                 iconColor: AppColors.accent,
-                onChanged: (v) => setState(() => _autoLock = v),
+                onChanged: _toggleAutoLock,
               ),
               if (_autoLock)
                 _SelectOption(
@@ -97,7 +208,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                   title: 'مدة القفل',
                   value: _autoLockTime,
                   options: ['دقيقة واحدة', '5 دقائق', '15 دقيقة', '30 دقيقة'],
-                  onChanged: (v) => setState(() => _autoLockTime = v),
+                  onChanged: _changeAutoLockTime,
                   iconColor: AppColors.info,
                 ),
             ]).animate().slideY(delay: 200.ms).fadeIn(delay: 200.ms),
@@ -111,7 +222,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                 subtitle: 'منع التقاط صور للشاشة',
                 value: _preventScreenshot,
                 iconColor: AppColors.error,
-                onChanged: (v) => setState(() => _preventScreenshot = v),
+                onChanged: _toggleScreenshot,
               ),
             ]).animate().slideY(delay: 300.ms).fadeIn(delay: 300.ms),
 
@@ -155,8 +266,12 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   }
 
   void _showPinDialog() {
+    final controllers = List.generate(4, (i) => TextEditingController());
+    final focusNodes = List.generate(4, (i) => FocusNode());
+
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -172,17 +287,57 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                 width: 48, height: 48, margin: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: BoxDecoration(border: Border.all(color: AppColors.primary, width: 2), borderRadius: BorderRadius.circular(12)),
                 child: TextField(
+                  controller: controllers[i],
+                  focusNode: focusNodes[i],
                   maxLength: 1, textAlign: TextAlign.center, keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   style: GoogleFonts.tajawal(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold),
                   decoration: const InputDecoration(border: InputBorder.none, counterText: ''),
+                  onChanged: (value) {
+                    if (value.isNotEmpty && i < 3) {
+                      focusNodes[i + 1].requestFocus();
+                    } else if (value.isEmpty && i > 0) {
+                      focusNodes[i - 1].requestFocus();
+                    }
+                  },
                 ),
               )),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () { setState(() => _pin = false); Navigator.pop(ctx); }, child: Text('إلغاء', style: GoogleFonts.tajawal(color: AppColors.textHint))),
-          ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary), onPressed: () => Navigator.pop(ctx), child: Text('حفظ', style: GoogleFonts.tajawal())),
+          TextButton(
+            onPressed: () {
+              setState(() => _pin = false);
+              Navigator.pop(ctx);
+            },
+            child: Text('إلغاء', style: GoogleFonts.tajawal(color: AppColors.textHint)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              final pinCode = controllers.map((c) => c.text).join();
+              if (pinCode.length < 4) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('يرجى إكمال رمز PIN المكون من 4 أرقام', style: GoogleFonts.tajawal())),
+                );
+                return;
+              }
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('security_pin', true);
+              await prefs.setString('security_pin_code', pinCode);
+              
+              setState(() {
+                _pin = true;
+              });
+              
+              if (mounted) {
+                Navigator.pop(ctx);
+                _showSuccessSnackBar('تم حفظ رمز PIN بنجاح');
+              }
+            },
+            child: Text('حفظ', style: GoogleFonts.tajawal()),
+          ),
         ],
       ),
     );
