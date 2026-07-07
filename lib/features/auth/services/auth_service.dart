@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   // الحصول على حالة التوثيق الحالية (Stream)
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -91,17 +93,17 @@ class AuthService {
     final cacheKey = 'offline_user_${email.trim().toLowerCase()}';
     final data = {
       'email': email.trim().toLowerCase(),
-      'password': password, // Basic cache, normally hashed
+      'password': password,
       'uid': uid,
     };
-    await prefs.setString(cacheKey, jsonEncode(data));
+    await _secureStorage.write(key: cacheKey, value: jsonEncode(data));
     await prefs.setString('offline_active_uid', uid);
   }
 
   Future<String?> _verifyOfflineCredentials(String email, String password) async {
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = 'offline_user_${email.trim().toLowerCase()}';
-    final cacheDataStr = prefs.getString(cacheKey);
+    final cacheDataStr = await _secureStorage.read(key: cacheKey);
     
     if (cacheDataStr != null) {
       final Map<String, dynamic> data = jsonDecode(cacheDataStr);

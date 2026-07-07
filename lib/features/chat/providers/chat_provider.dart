@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/models/app_models.dart' hide currentUserProvider, currentPartnerProvider;
+import '../../../core/models/app_models.dart';
 import '../../../features/chat/services/chat_service.dart';
 import '../../auth/providers/auth_provider.dart';
 

@@ -1,6 +1,38 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/app_models.dart';
 
+class MemoryCommentModel {
+  final String id;
+  final String userName;
+  final String text;
+  final DateTime createdAt;
+
+  const MemoryCommentModel({
+    required this.id,
+    required this.userName,
+    required this.text,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'userName': userName,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'text': text,
+    };
+  }
+
+  factory MemoryCommentModel.fromMap(Map<String, dynamic> map, String id) {
+    return MemoryCommentModel(
+      id: id,
+      userName: map['userName'] ?? '',
+      text: map['text'] ?? '',
+      createdAt: map['createdAt'] != null ? (map['createdAt'] as Timestamp).toDate() : DateTime.now(),
+    );
+  }
+}
+
 class MemoryService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -22,7 +54,6 @@ class MemoryService {
   }) async {
     final coupleId = _getCoupleId(userId, partnerId);
     
-    // تحويل MemoryModel إلى Map (يجب أن نضيف toMap إلى MemoryModel)
     final memoryData = {
       'id': memory.id,
       'title': memory.title,
@@ -74,6 +105,58 @@ class MemoryService {
     await _memoriesCollection(coupleId).doc(memoryId).update({
       'isLiked': !currentIsLiked,
       'likes': currentIsLiked ? currentLikes - 1 : currentLikes + 1,
+    });
+  }
+
+  // تحديث الذكرى
+  Future<void> updateMemory({
+    required String userId,
+    required String partnerId,
+    required MemoryModel memory,
+  }) async {
+    final coupleId = _getCoupleId(userId, partnerId);
+    await _memoriesCollection(coupleId).doc(memory.id).update({
+      'title': memory.title,
+      'description': memory.description,
+      'location': memory.location,
+    });
+  }
+
+  // حذف ذكرى
+  Future<void> deleteMemory(String userId, String partnerId, String memoryId) async {
+    final coupleId = _getCoupleId(userId, partnerId);
+    await _memoriesCollection(coupleId).doc(memoryId).delete();
+  }
+
+  // إضافة تعليق
+  Future<void> addComment({
+    required String userId,
+    required String partnerId,
+    required String memoryId,
+    required MemoryCommentModel comment,
+  }) async {
+    final coupleId = _getCoupleId(userId, partnerId);
+    await _memoriesCollection(coupleId)
+        .doc(memoryId)
+        .collection('comments')
+        .doc(comment.id)
+        .set(comment.toMap());
+  }
+
+  // جلب التعليقات كبث حي
+  Stream<List<MemoryCommentModel>> getCommentsStream({
+    required String userId,
+    required String partnerId,
+    required String memoryId,
+  }) {
+    final coupleId = _getCoupleId(userId, partnerId);
+    return _memoriesCollection(coupleId)
+        .doc(memoryId)
+        .collection('comments')
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => MemoryCommentModel.fromMap(doc.data(), doc.id)).toList();
     });
   }
 }

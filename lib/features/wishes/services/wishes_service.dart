@@ -1,6 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/app_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/providers/auth_provider.dart';
+
+final wishesServiceProvider = Provider<WishesService>((ref) => WishesService());
+
+final bucketListStreamProvider = StreamProvider<List<WishModel>>((ref) {
+  final user = ref.watch(currentUserProvider).value;
+  if (user == null || user.partnerId == null || user.partnerId!.isEmpty) {
+    return const Stream.empty();
+  }
+  return ref.watch(wishesServiceProvider).getWishesStream(user.id, user.partnerId!);
+});
 
 class WishesService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

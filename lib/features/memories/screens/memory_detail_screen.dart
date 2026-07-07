@@ -4,11 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:uuid/uuid.dart';
 
-import '../../../core/models/app_models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/common_widgets.dart';
+import '../../../core/models/app_models.dart';
 import '../providers/memories_provider.dart';
+import '../services/memory_service.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class MemoryDetailScreen extends ConsumerStatefulWidget {
   const MemoryDetailScreen({super.key});
@@ -21,6 +25,7 @@ class _MemoryDetailScreenState extends ConsumerState<MemoryDetailScreen> {
   bool _isLiked = false;
   int _likes = 0;
   bool _isInitialized = false;
+  String _currentMemoryId = '';
   final _commentController = TextEditingController();
 
   @override
@@ -29,23 +34,184 @@ class _MemoryDetailScreenState extends ConsumerState<MemoryDetailScreen> {
     super.dispose();
   }
 
+  void _showActionsMenu(BuildContext context, MemoryModel memory) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit_rounded, color: AppColors.primary),
+            title: Text('تعديل الذكرى', style: GoogleFonts.tajawal(color: AppColors.textPrimary)),
+            onTap: () {
+              Navigator.pop(ctx);
+              _showEditMemoryDialog(memory);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_rounded, color: AppColors.error),
+            title: Text('حذف الذكرى', style: GoogleFonts.tajawal(color: AppColors.error)),
+            onTap: () {
+              Navigator.pop(ctx);
+              _confirmDeleteMemory(memory);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditMemoryDialog(MemoryModel memory) {
+    final titleController = TextEditingController(text: memory.title);
+    final descController = TextEditingController(text: memory.description);
+    final locController = TextEditingController(text: memory.location);
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('تعديل الذكرى', style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  style: GoogleFonts.tajawal(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'العنوان',
+                    labelStyle: GoogleFonts.tajawal(color: AppColors.textHint),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  style: GoogleFonts.tajawal(color: AppColors.textPrimary),
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'الوصف',
+                    labelStyle: GoogleFonts.tajawal(color: AppColors.textHint),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: locController,
+                  style: GoogleFonts.tajawal(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'الموقع',
+                    labelStyle: GoogleFonts.tajawal(color: AppColors.textHint),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(context),
+              child: Text('إلغاء', style: GoogleFonts.tajawal(color: AppColors.textHint)),
+            ),
+            isSaving
+                ? const CircularProgressIndicator()
+                : ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                    onPressed: () async {
+                      setStateDialog(() => isSaving = true);
+                      try {
+                        final user = ref.read(currentUserProvider).value;
+                        if (user != null && user.partnerId != null) {
+                          final updatedMemory = MemoryModel(
+                            id: memory.id,
+                            title: titleController.text.trim(),
+                            description: descController.text.trim(),
+                            location: locController.text.trim(),
+                            mediaUrl: memory.mediaUrl,
+                            category: memory.category,
+                            date: memory.date,
+                            likes: memory.likes,
+                            isLiked: memory.isLiked,
+                            colorIndex: memory.colorIndex,
+                          );
+                          final service = ref.read(memoryServiceProvider);
+                          await service.updateMemory(
+                            userId: user.id,
+                            partnerId: user.partnerId!,
+                            memory: updatedMemory,
+                          );
+                          ref.read(selectedMemoryProvider.notifier).state = updatedMemory;
+                        }
+                        if (mounted) Navigator.pop(context);
+                      } catch (e) {
+                        setStateDialog(() => isSaving = false);
+                      }
+                    },
+                    child: Text('حفظ', style: GoogleFonts.tajawal()),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteMemory(MemoryModel memory) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('حذف الذكرى', style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, color: AppColors.error)),
+        content: Text('هل أنت متأكد من حذف هذه الذكرى نهائياً؟', style: GoogleFonts.tajawal(color: AppColors.textPrimary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('إلغاء', style: GoogleFonts.tajawal(color: AppColors.textHint)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () async {
+              try {
+                final user = ref.read(currentUserProvider).value;
+                if (user != null && user.partnerId != null) {
+                  final service = ref.read(memoryServiceProvider);
+                  await service.deleteMemory(user.id, user.partnerId!, memory.id);
+                }
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  context.pop();
+                }
+              } catch (e) {
+                // Error
+              }
+            },
+            child: Text('حذف', style: GoogleFonts.tajawal()),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final memory = ref.watch(selectedMemoryProvider);
+    final currentUser = ref.watch(currentUserProvider).value;
 
-    if (memory == null) {
+    if (memory == null || currentUser == null) {
       return Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
         body: Center(
-          child: Text('الذكرى غير موجودة', style: GoogleFonts.tajawal(color: Colors.white, fontSize: 18)),
+          child: Text('الذكرى غير موجودة أو لم يتم تسجيل الدخول', style: GoogleFonts.tajawal(color: Colors.white, fontSize: 18)),
         ),
       );
     }
 
-    if (!_isInitialized) {
+    if (!_isInitialized || _currentMemoryId != memory.id) {
       _isLiked = memory.isLiked;
       _likes = memory.likes;
+      _currentMemoryId = memory.id;
       _isInitialized = true;
     }
 
@@ -57,7 +223,7 @@ class _MemoryDetailScreenState extends ConsumerState<MemoryDetailScreen> {
           SliverAppBar(
             expandedHeight: 350,
             pinned: true,
-            backgroundColor: AppColors.background.withOpacity(0.9),
+            backgroundColor: AppColors.background.withOpacity(0.95),
             leading: IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
@@ -79,7 +245,9 @@ class _MemoryDetailScreenState extends ConsumerState<MemoryDetailScreen> {
                   ),
                   child: const Icon(Icons.share_rounded, color: Colors.white, size: 18),
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Share.share('${memory.title}\n${memory.description ?? ''}');
+                },
               ),
               IconButton(
                 icon: Container(
@@ -90,7 +258,7 @@ class _MemoryDetailScreenState extends ConsumerState<MemoryDetailScreen> {
                   ),
                   child: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 18),
                 ),
-                onPressed: () {},
+                onPressed: () => _showActionsMenu(context, memory),
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
@@ -137,11 +305,16 @@ class _MemoryDetailScreenState extends ConsumerState<MemoryDetailScreen> {
                       ),
                       // Like Button
                       GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isLiked = !_isLiked;
-                            _likes += _isLiked ? 1 : -1;
-                          });
+                        onTap: () async {
+                          final user = ref.read(currentUserProvider).value;
+                          if (user != null && user.partnerId != null) {
+                            final service = ref.read(memoryServiceProvider);
+                            setState(() {
+                              _isLiked = !_isLiked;
+                              _likes += _isLiked ? 1 : -1;
+                            });
+                            await service.toggleLike(user.id, user.partnerId!, memory.id, !_isLiked, _likes);
+                          }
                         },
                         child: Row(
                           children: [
@@ -218,7 +391,7 @@ class _MemoryDetailScreenState extends ConsumerState<MemoryDetailScreen> {
                   const Divider(color: AppColors.divider),
                   const SizedBox(height: 16),
 
-                  // Comments Section (Hardcoded for now)
+                  // Comments Section
                   Text(
                     'التعليقات',
                     style: GoogleFonts.tajawal(
@@ -229,7 +402,31 @@ class _MemoryDetailScreenState extends ConsumerState<MemoryDetailScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  _buildComment('شريكك', 'ذكرى جميلة جداً ❤️', 'الآن'),
+                  StreamBuilder<List<MemoryCommentModel>>(
+                    stream: ref.read(memoryServiceProvider).getCommentsStream(
+                          userId: currentUser.id,
+                          partnerId: currentUser.partnerId!,
+                          memoryId: memory.id,
+                        ),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                      }
+                      final comments = snapshot.data ?? [];
+                      if (comments.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Text('لا توجد تعليقات بعد. اكتب أول تعليق!', style: GoogleFonts.tajawal(color: AppColors.textHint, fontSize: 13)),
+                        );
+                      }
+                      return Column(
+                        children: comments.map((c) {
+                          final timeStr = DateFormat('jm', 'ar').format(c.createdAt);
+                          return _buildComment(c.userName, c.text, timeStr);
+                        }).toList(),
+                      );
+                    },
+                  ),
 
                   const SizedBox(height: 16),
 
@@ -262,7 +459,29 @@ class _MemoryDetailScreenState extends ConsumerState<MemoryDetailScreen> {
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             suffixIcon: IconButton(
                               icon: const Icon(Icons.send_rounded, color: AppColors.primary),
-                              onPressed: () {},
+                              onPressed: () async {
+                                final text = _commentController.text.trim();
+                                if (text.isEmpty) return;
+                                _commentController.clear();
+                                
+                                try {
+                                  final service = ref.read(memoryServiceProvider);
+                                  final comment = MemoryCommentModel(
+                                    id: const Uuid().v4(),
+                                    userName: currentUser.name,
+                                    text: text,
+                                    createdAt: DateTime.now(),
+                                  );
+                                  await service.addComment(
+                                    userId: currentUser.id,
+                                    partnerId: currentUser.partnerId!,
+                                    memoryId: memory.id,
+                                    comment: comment,
+                                  );
+                                } catch (e) {
+                                  // Error
+                                }
+                              },
                             ),
                           ),
                         ),

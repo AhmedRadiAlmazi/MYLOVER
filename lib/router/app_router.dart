@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'scaffold_with_nav_bar.dart';
+import '../core/models/app_models.dart';
 
 // Auth
 import '../features/auth/screens/splash_screen.dart';
@@ -68,7 +69,7 @@ import '../features/stories/screens/stories_screen.dart';
 // ── Custom Page Transition ────────────────────────────────────────
 Page<T> _slidePage<T>(BuildContext context, GoRouterState state, Widget child) {
   return CustomTransitionPage<T>(
-    key: ValueKey('${state.pageKey.toString()}_${child.hashCode}'),
+    key: state.pageKey,
     child: child,
     transitionDuration: const Duration(milliseconds: 300),
     reverseTransitionDuration: const Duration(milliseconds: 250),
@@ -90,7 +91,14 @@ Page<T> _slidePage<T>(BuildContext context, GoRouterState state, Widget child) {
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+  final homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home');
+  final chatNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'chat');
+  final calendarNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'calendar');
+  final profileNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profile');
+
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     debugLogDiagnostics: false,
     routes: [
@@ -128,6 +136,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
         branches: [
           StatefulShellBranch(
+            navigatorKey: homeNavigatorKey,
             routes: [
               GoRoute(
                 path: '/home',
@@ -137,6 +146,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
+            navigatorKey: chatNavigatorKey,
             routes: [
               GoRoute(
                 path: '/chat',
@@ -146,6 +156,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
+            navigatorKey: calendarNavigatorKey,
             routes: [
               GoRoute(
                 path: '/calendar',
@@ -155,6 +166,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
+            navigatorKey: profileNavigatorKey,
             routes: [
               GoRoute(
                 path: '/profile',
@@ -200,7 +212,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/diary-entry',
         name: 'diary-entry',
-        builder: (context, state) => const DiaryEntryScreen(),
+        builder: (context, state) {
+          final entry = state.extra as DiaryModel?;
+          return DiaryEntryScreen(entry: entry);
+        },
       ),
 
       // ── Calendar ─────────────────────────────────────────
@@ -305,17 +320,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SharedBookScreen(),
       ),
       GoRoute(
-        path: '/shared-book/page/new',
+        path: '/shared-book/page-new',
         name: 'shared-book-new',
         builder: (context, state) => const AddEditPageScreen(),
       ),
       GoRoute(
-        path: '/shared-book/page/:id',
+        path: '/shared-book/page-detail/:id',
         name: 'shared-book-detail',
         builder: (context, state) => PageDetailsScreen(pageId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/shared-book/page/edit/:id',
+        path: '/shared-book/page-edit/:id',
         name: 'shared-book-edit',
         builder: (context, state) => AddEditPageScreen(pageId: state.pathParameters['id']),
       ),

@@ -2,10 +2,12 @@ import 'dart:math';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/app_models.dart';
 
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   // الإشارة إلى مجموعة المستخدمين
   CollectionReference<Map<String, dynamic>> get _usersCollection =>
@@ -148,13 +150,11 @@ class UserService {
   // ── Local caching functions ────────────────────────────────────
 
   Future<void> _cacheUserLocally(UserModel user) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('cached_user_model_${user.id}', jsonEncode(user.toMap()));
+    await _secureStorage.write(key: 'cached_user_model_${user.id}', value: jsonEncode(user.toMap()));
   }
 
   Future<UserModel?> _getLocalCachedUser(String uid) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString('cached_user_model_$uid');
+    final jsonStr = await _secureStorage.read(key: 'cached_user_model_$uid');
     if (jsonStr != null) {
       return UserModel.fromMap(jsonDecode(jsonStr));
     }

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +18,10 @@ class MusicScreen extends StatefulWidget {
 class _MusicScreenState extends State<MusicScreen> with TickerProviderStateMixin {
   bool _isPlaying = false;
   int _currentSong = 0;
+  int _currentPositionSeconds = 0;
+  bool _isShuffle = false;
+  bool _isRepeat = false;
+  Timer? _playbackTimer;
   late AnimationController _rotationController;
 
   final List<_Song> _songs = [
@@ -32,23 +38,95 @@ class _MusicScreenState extends State<MusicScreen> with TickerProviderStateMixin
     super.initState();
     _rotationController = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat();
     _rotationController.stop();
+    _startPlaybackTimer();
   }
 
   @override
   void dispose() {
+    _playbackTimer?.cancel();
     _rotationController.dispose();
     super.dispose();
   }
 
+  void _startPlaybackTimer() {
+    _playbackTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_isPlaying) {
+        final totalSeconds = _parseDuration(_songs[_currentSong].duration);
+        setState(() {
+          if (_currentPositionSeconds < totalSeconds) {
+            _currentPositionSeconds++;
+          } else {
+            if (_isRepeat) {
+              _currentPositionSeconds = 0;
+            } else {
+              _nextSong();
+            }
+          }
+        });
+      }
+    });
+  }
+
+  int _parseDuration(String durationStr) {
+    final parts = durationStr.split(':');
+    if (parts.length == 2) {
+      final m = int.tryParse(parts[0]) ?? 0;
+      final s = int.tryParse(parts[1]) ?? 0;
+      return m * 60 + s;
+    }
+    return 0;
+  }
+
+  String _formatDuration(int seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
   void _togglePlay() {
     setState(() => _isPlaying = !_isPlaying);
-    if (_isPlaying) _rotationController.repeat();
-    else _rotationController.stop();
+    if (_isPlaying) {
+      _rotationController.repeat();
+    } else {
+      _rotationController.stop();
+    }
+  }
+
+  void _nextSong() {
+    if (_isShuffle) {
+      final randIdx = math.Random().nextInt(_songs.length);
+      setState(() {
+        _currentSong = randIdx;
+        _currentPositionSeconds = 0;
+      });
+    } else {
+      setState(() {
+        _currentSong = (_currentSong + 1) % _songs.length;
+        _currentPositionSeconds = 0;
+      });
+    }
+  }
+
+  void _prevSong() {
+    setState(() {
+      _currentSong = (_currentSong - 1 + _songs.length) % _songs.length;
+      _currentPositionSeconds = 0;
+    });
+  }
+
+  void _toggleShuffle() {
+    setState(() => _isShuffle = !_isShuffle);
+  }
+
+  void _toggleRepeat() {
+    setState(() => _isRepeat = !_isRepeat);
   }
 
   @override
   Widget build(BuildContext context) {
     final song = _songs[_currentSong];
+    final totalSecs = _parseDuration(song.duration);
+    final currentVal = totalSecs > 0 ? (_currentPositionSeconds / totalSecs).clamp(0.0, 1.0) : 0.0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -94,14 +172,21 @@ class _MusicScreenState extends State<MusicScreen> with TickerProviderStateMixin
                       thumbColor: AppColors.primary,
                       overlayColor: AppColors.primary.withOpacity(0.1),
                     ),
-                    child: Slider(value: 0.4, onChanged: (_) {}),
+                    child: Slider(
+                      value: currentVal,
+                      onChanged: (fraction) {
+                        setState(() {
+                          _currentPositionSeconds = (fraction * totalSecs).round();
+                        });
+                      },
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('1:12', style: GoogleFonts.tajawal(color: AppColors.textHint, fontSize: 12)),
+                        Text(_formatDuration(_currentPositionSeconds), style: GoogleFonts.tajawal(color: AppColors.textHint, fontSize: 12)),
                         Text(song.duration, style: GoogleFonts.tajawal(color: AppColors.textHint, fontSize: 12)),
                       ],
                     ),
@@ -114,10 +199,13 @@ class _MusicScreenState extends State<MusicScreen> with TickerProviderStateMixin
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  IconButton(icon: const Icon(Icons.shuffle_rounded, color: AppColors.textHint, size: 28), onPressed: () {}),
+                  IconButton(
+                    icon: Icon(Icons.shuffle_rounded, color: _isShuffle ? AppColors.primary : AppColors.textHint, size: 28),
+                    onPressed: _toggleShuffle,
+                  ),
                   IconButton(
                     icon: const Icon(Icons.skip_previous_rounded, color: AppColors.textPrimary, size: 40),
-                    onPressed: () => setState(() => _currentSong = (_currentSong - 1 + _songs.length) % _songs.length),
+                    onPressed: _prevSong,
                   ),
                   Container(
                     width: 68, height: 68,
@@ -129,9 +217,12 @@ class _MusicScreenState extends State<MusicScreen> with TickerProviderStateMixin
                   ),
                   IconButton(
                     icon: const Icon(Icons.skip_next_rounded, color: AppColors.textPrimary, size: 40),
-                    onPressed: () => setState(() => _currentSong = (_currentSong + 1) % _songs.length),
+                    onPressed: _nextSong,
                   ),
-                  IconButton(icon: const Icon(Icons.repeat_rounded, color: AppColors.textHint, size: 28), onPressed: () {}),
+                  IconButton(
+                    icon: Icon(Icons.repeat_rounded, color: _isRepeat ? AppColors.primary : AppColors.textHint, size: 28),
+                    onPressed: _toggleRepeat,
+                  ),
                 ],
               ),
               const SizedBox(height: 32),
@@ -143,7 +234,14 @@ class _MusicScreenState extends State<MusicScreen> with TickerProviderStateMixin
                 final s = e.value;
                 final isSelected = e.key == _currentSong;
                 return GestureDetector(
-                  onTap: () { setState(() { _currentSong = e.key; _isPlaying = true; }); _rotationController.repeat(); },
+                  onTap: () {
+                    setState(() {
+                      _currentSong = e.key;
+                      _currentPositionSeconds = 0;
+                      _isPlaying = true;
+                    });
+                    _rotationController.repeat();
+                  },
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

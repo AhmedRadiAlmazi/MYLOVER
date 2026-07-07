@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/models/app_models.dart' hide currentUserProvider;
+import '../../../core/models/app_models.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../../memories/providers/memories_provider.dart';
 import '../../diary/providers/diary_provider.dart';

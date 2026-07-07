@@ -18,6 +18,15 @@ class SecurityScreen extends ConsumerStatefulWidget {
 
 class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   final LocalAuthentication _localAuth = LocalAuthentication();
+  static const _securityChannel = MethodChannel('com.myuniverse.my_universe/security');
+
+  Future<void> _setSecureMode(bool enable) async {
+    try {
+      await _securityChannel.invokeMethod('setSecureMode', {'enable': enable});
+    } on PlatformException catch (e) {
+      debugPrint('Failed to set secure mode: $e');
+    }
+  }
   
   bool _biometric = false;
   bool _pin = false;
@@ -40,6 +49,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
       _autoLock = prefs.getBool('security_autolock') ?? true;
       _autoLockTime = prefs.getString('security_autolock_time') ?? '5 دقائق';
     });
+    await _setSecureMode(_preventScreenshot);
   }
 
   Future<void> _toggleBiometric(bool value) async {
@@ -90,13 +100,13 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   }
 
   Future<void> _toggleScreenshot(bool value) async {
-    // Under real implementation, this would call secure_application package,
-    // or native platform channels to set FLAG_SECURE. We persist it in SharedPreferences.
+    HapticFeedback.selectionClick();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('security_prevent_screenshot', value);
     setState(() {
       _preventScreenshot = value;
     });
+    await _setSecureMode(value);
     
     _showSuccessSnackBar(value ? 'تم تفعيل منع لقطات الشاشة بنجاح' : 'تم إلغاء منع لقطات الشاشة');
   }

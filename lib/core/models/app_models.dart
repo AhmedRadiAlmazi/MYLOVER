@@ -340,7 +340,7 @@ class DiaryModel {
   final String title;
   final String body;
   final String mood;
-  final IconData moodIcon;
+  final int moodIconCodePoint;
   final DateTime date;
   final String authorName;
   final bool isShared;
@@ -352,13 +352,15 @@ class DiaryModel {
     required this.title,
     required this.body,
     required this.mood,
-    required this.moodIcon,
+    required this.moodIconCodePoint,
     required this.date,
     required this.authorName,
     this.isShared = false,
     this.imageUrl,
     this.isEncrypted = false,
   });
+
+  IconData get moodIcon => IconData(moodIconCodePoint, fontFamily: 'MaterialIcons');
 
   static List<DiaryModel> get mockEntries => [
         DiaryModel(
@@ -367,7 +369,7 @@ class DiaryModel {
           body:
               'كان يوماً استثنائياً، التقينا في المقهى المفضل وتحدثنا طويلاً عن أحلامنا وخططنا للمستقبل. شعرت بالسعادة الغامرة في كل لحظة.',
           mood: 'سعيد',
-          moodIcon: Icons.sentiment_very_satisfied_rounded,
+          moodIconCodePoint: Icons.sentiment_very_satisfied_rounded.codePoint,
           date: DateTime.now().subtract(const Duration(days: 1)),
           authorName: 'محمد',
           isShared: true,
@@ -378,7 +380,7 @@ class DiaryModel {
           body:
               'كان يوماً طويلاً بدونك. أتمنى لو كنت معي لنشاهد هذا الغروب الجميل. لونه كان مثل لون شعرك... أحبك.',
           mood: 'متشوق',
-          moodIcon: Icons.favorite_border_rounded,
+          moodIconCodePoint: Icons.favorite_border_rounded.codePoint,
           date: DateTime.now().subtract(const Duration(days: 3)),
           authorName: 'سارة',
           isShared: false,
@@ -389,7 +391,7 @@ class DiaryModel {
           body:
               'لا أزال أتذكر كل تفاصيل رحلتنا. كل مكان زرناه، كل كلمة قيلت، كل ضحكة. إنها لحظات لن أنساها أبداً.',
           mood: 'سعيد',
-          moodIcon: Icons.sentiment_satisfied_alt_rounded,
+          moodIconCodePoint: Icons.sentiment_satisfied_alt_rounded.codePoint,
           date: DateTime.now().subtract(const Duration(days: 7)),
           authorName: 'محمد',
           isShared: true,
@@ -400,7 +402,7 @@ class DiaryModel {
           body:
               'جلست أفكر في مستقبلنا معاً. أتمنى أن يكون مليئاً بالمغامرات والذكريات الجميلة. معك يبدو كل شيء ممكناً.',
           mood: 'متفائل',
-          moodIcon: Icons.star_rounded,
+          moodIconCodePoint: Icons.star_rounded.codePoint,
           date: DateTime.now().subtract(const Duration(days: 10)),
           authorName: 'سارة',
           isShared: false,
@@ -411,7 +413,7 @@ class DiaryModel {
           body:
               'اليوم مرت سنة على أجمل يوم في حياتي. اليوم الذي التقيت فيه بنصفي الآخر. أشكر الله كل يوم على هذه النعمة.',
           mood: 'شاكر',
-          moodIcon: Icons.favorite_rounded,
+          moodIconCodePoint: Icons.favorite_rounded.codePoint,
           date: DateTime.now().subtract(const Duration(days: 365)),
           authorName: 'محمد',
           isShared: true,
@@ -422,7 +424,7 @@ class DiaryModel {
           body:
               'مساء هادئ مع كوب من الشاي والموسيقى المفضلة. أفتقدك في هذه اللحظات. أتمنى لو كنت هنا.',
           mood: 'هادئ',
-          moodIcon: Icons.nightlight_round,
+          moodIconCodePoint: Icons.nightlight_round.codePoint,
           date: DateTime.now().subtract(const Duration(days: 14)),
           authorName: 'سارة',
           isShared: false,
@@ -642,17 +644,3 @@ class EventModel {
         ),
       ];
 }
-
-// ── Providers ─────────────────────────────────────
-
-final currentUserProvider = StateProvider<UserModel?>((ref) {
-  return UserModel.mock();
-});
-
-final currentPartnerProvider = StateProvider<UserModel?>((ref) {
-  return UserModel.mockPartner();
-});
-
-final isLoggedInProvider = StateProvider<bool>((ref) => false);
-
-final isPairedProvider = StateProvider<bool>((ref) => false);

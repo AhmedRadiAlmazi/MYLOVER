@@ -1,8 +1,7 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 class AiService {
-  // يرجى استبدال هذا المفتاح بمفتاحك الحقيقي من Google AI Studio
-  static const String _apiKey = 'YOUR_GEMINI_API_KEY'; 
+  static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY', defaultValue: 'YOUR_GEMINI_API_KEY'); 
   late final GenerativeModel _model;
   ChatSession? _chat;
 

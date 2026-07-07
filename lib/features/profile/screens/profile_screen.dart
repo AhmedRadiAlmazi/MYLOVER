@@ -6,13 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/common_widgets.dart';
-import '../../../core/models/app_models.dart' hide currentUserProvider, currentPartnerProvider;
+import '../../../core/models/app_models.dart';
 import '../../../core/services/storage_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-
-final _storageServiceProvider = Provider<StorageService>((ref) => StorageService());
 
 Future<void> _showEditProfileDialog(BuildContext context, WidgetRef ref, UserModel user) async {
   final nameController = TextEditingController(text: user.name);
@@ -80,7 +78,7 @@ Future<void> _showEditProfileDialog(BuildContext context, WidgetRef ref, UserMod
                 try {
                   String? newAvatarUrl;
                   if (selectedImage != null) {
-                    newAvatarUrl = await ref.read(_storageServiceProvider).uploadAvatar(selectedImage!, user.id);
+                    newAvatarUrl = await ref.read(storageServiceProvider).uploadAvatar(selectedImage!, user.id);
                   }
                   
                   final userService = ref.read(userServiceProvider);

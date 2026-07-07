@@ -6,14 +6,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/common_widgets.dart';
-import '../../../core/models/app_models.dart' hide currentUserProvider, currentPartnerProvider;
+import '../../../core/models/app_models.dart';
 import '../../../core/services/storage_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/chat_input_bar.dart';
-
-final storageServiceProvider = Provider<StorageService>((ref) => StorageService());
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});

@@ -41,6 +41,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final authState = ref.read(authStateChangesProvider);
     
     if (authState.value != null || offlineActiveUid != null) {
+      await prefs.setBool('isFirstLaunch', false);
       // User is logged in (either Firebase auth or offline cached session)
       final activeUid = authState.value?.uid ?? offlineActiveUid!;
       final cachedUserStr = prefs.getString('cached_user_model_$activeUid');

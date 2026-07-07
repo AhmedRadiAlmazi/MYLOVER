@@ -10,15 +10,14 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/common_widgets.dart';
-import '../../../core/models/app_models.dart' hide currentUserProvider, currentPartnerProvider;
+import '../../../core/models/app_models.dart';
 import '../providers/diary_provider.dart';
 import '../../../core/services/storage_service.dart';
 import '../../auth/providers/auth_provider.dart';
 
-final storageServiceProvider = Provider<StorageService>((ref) => StorageService());
-
 class DiaryEntryScreen extends ConsumerStatefulWidget {
-  const DiaryEntryScreen({super.key});
+  const DiaryEntryScreen({super.key, this.entry});
+  final DiaryModel? entry;
 
   @override
   ConsumerState<DiaryEntryScreen> createState() => _DiaryEntryScreenState();
@@ -31,6 +30,7 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
   bool _isShared = false;
   bool _isSaving = false;
   File? _imageFile;
+  String? _existingImageUrl;
 
   final List<IconData> _moods = [
     Icons.sentiment_very_satisfied_rounded,
@@ -44,6 +44,18 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
     Icons.sentiment_neutral_rounded,
     Icons.favorite_border_rounded,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.entry != null) {
+      _titleController.text = widget.entry!.title;
+      _bodyController.text = widget.entry!.body;
+      _selectedMood = widget.entry!.moodIcon;
+      _isShared = widget.entry!.isShared;
+      _existingImageUrl = widget.entry!.imageUrl;
+    }
+  }
 
   @override
   void dispose() {
@@ -87,7 +99,7 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
     setState(() => _isSaving = true);
     
     try {
-      String? imageUrl;
+      String? imageUrl = _existingImageUrl;
       if (_imageFile != null) {
         final storageService = ref.read(storageServiceProvider);
         imageUrl = await storageService.uploadFile(_imageFile!, 'diary_images');
@@ -95,13 +107,13 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
 
       final diaryService = ref.read(diaryServiceProvider);
       final newEntry = DiaryModel(
-        id: const Uuid().v4(),
+        id: widget.entry?.id ?? const Uuid().v4(),
         title: _titleController.text.trim(),
         body: _bodyController.text.trim(),
         mood: 'mood',
-        moodIcon: _selectedMood,
-        date: DateTime.now(),
-        authorName: currentUser.name,
+        moodIconCodePoint: _selectedMood.codePoint,
+        date: widget.entry?.date ?? DateTime.now(),
+        authorName: widget.entry?.authorName ?? currentUser.name,
         isShared: _isShared,
         imageUrl: imageUrl,
       );
@@ -135,7 +147,9 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateFormat('EEEE، d MMMM yyyy', 'ar').format(DateTime.now());
+    final currentUser = ref.watch(currentUserProvider).value;
+    final isAuthor = widget.entry == null || widget.entry!.authorName == currentUser?.name;
+    final today = DateFormat('EEEE، d MMMM yyyy', 'ar').format(widget.entry?.date ?? DateTime.now());
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -147,7 +161,7 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'اكتب يومياتك',
+          isAuthor ? (widget.entry == null ? 'اكتب يومياتك' : 'تعديل اليوميات') : 'عرض اليوميات',
           style: GoogleFonts.tajawal(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -155,17 +169,19 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          GradientButton(
-            text: 'حفظ',
-            onPressed: _save,
-            isLoading: _isSaving,
-            width: 80,
-            height: 38,
-            borderRadius: 12,
-          ),
-          const SizedBox(width: 12),
-        ],
+        actions: isAuthor
+            ? [
+                GradientButton(
+                  text: 'حفظ',
+                  onPressed: _save,
+                  isLoading: _isSaving,
+                  width: 80,
+                  height: 38,
+                  borderRadius: 12,
+                ),
+                const SizedBox(width: 12),
+              ]
+            : null,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -202,7 +218,7 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
                     final mood = _moods[i];
                     final isSelected = mood == _selectedMood;
                     return GestureDetector(
-                      onTap: () => setState(() => _selectedMood = mood),
+                      onTap: isAuthor ? () => setState(() => _selectedMood = mood) : null,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.only(left: 8),
@@ -235,6 +251,7 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
               // Title field
               TextField(
                 controller: _titleController,
+                readOnly: !isAuthor,
                 style: GoogleFonts.tajawal(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -259,6 +276,7 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
               // Body field
               TextField(
                 controller: _bodyController,
+                readOnly: !isAuthor,
                 maxLines: null,
                 minLines: 8,
                 keyboardType: TextInputType.multiline,
@@ -312,7 +330,7 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
                     ),
                     Switch(
                       value: _isShared,
-                      onChanged: (val) => setState(() => _isShared = val),
+                      onChanged: isAuthor ? (val) => setState(() => _isShared = val) : null,
                       activeColor: AppColors.primary,
                     ),
                   ],
@@ -330,25 +348,48 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
                       borderRadius: BorderRadius.circular(12),
                       child: Image.file(_imageFile!, height: 150, width: double.infinity, fit: BoxFit.cover),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.cancel, color: Colors.white, size: 28),
-                      onPressed: () => setState(() => _imageFile = null),
+                    if (isAuthor)
+                      IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.white, size: 28),
+                        onPressed: () => setState(() => _imageFile = null),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ] else if (_existingImageUrl != null) ...[
+                Stack(
+                  alignment: Alignment.topRight,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SmartImage(
+                        imageUrl: _existingImageUrl!,
+                        height: 150,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
                     ),
+                    if (isAuthor)
+                      IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.white, size: 28),
+                        onPressed: () => setState(() => _existingImageUrl = null),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 16),
               ],
               
-              OutlinedButton.icon(
-                onPressed: _pickImage,
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: Text(_imageFile == null ? 'إرفاق صورة' : 'تغيير الصورة', style: GoogleFonts.tajawal()),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ).animate().fadeIn(delay: 350.ms),
+              if (isAuthor)
+                OutlinedButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: Text((_imageFile == null && _existingImageUrl == null) ? 'إرفاق صورة' : 'تغيير الصورة', style: GoogleFonts.tajawal()),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ).animate().fadeIn(delay: 350.ms),
 
               const SizedBox(height: 40),
             ],

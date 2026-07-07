@@ -12,7 +12,7 @@ import '../../../core/widgets/common_widgets.dart';
 import '../../../features/surprise_box/services/surprise_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../../core/models/app_models.dart' hide currentUserProvider, currentPartnerProvider, isLoggedInProvider, isPairedProvider;
+import '../../../core/models/app_models.dart';
 
 final surpriseServiceProvider = Provider<SurpriseService>((ref) => SurpriseService());
 

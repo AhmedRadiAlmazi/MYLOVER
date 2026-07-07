@@ -42,13 +42,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
-      await authService.signInWithEmailAndPassword(
+      final credential = await authService.signInWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
 
       if (!mounted) return;
-      context.go('/home');
+
+      final uid = credential.user?.uid;
+      if (uid != null) {
+        final userService = ref.read(userServiceProvider);
+        final user = await userService.getUser(uid);
+        if (!mounted) return;
+        if (user != null && user.partnerId != null && user.partnerId!.isNotEmpty) {
+          context.go('/home');
+        } else {
+          context.go('/pairing');
+        }
+      } else {
+        context.go('/pairing');
+      }
     } catch (e) {
       if (mounted) {
         HapticFeedback.vibrate();

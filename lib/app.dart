@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'router/app_router.dart';
+import 'features/settings/screens/app_lock_overlay_screen.dart';
 
 class MyUniverseApp extends ConsumerWidget {
   const MyUniverseApp({super.key});
@@ -35,10 +36,38 @@ class MyUniverseApp extends ConsumerWidget {
         builder: (context, child) {
           return Directionality(
             textDirection: TextDirection.rtl,
-            child: child!,
+            child: AppLockWrapper(child: child!),
           );
         },
       ),
+    );
+  }
+}
+
+class AppLockWrapper extends StatefulWidget {
+  const AppLockWrapper({super.key, required this.child});
+  final Widget child;
+
+  @override
+  State<AppLockWrapper> createState() => _AppLockWrapperState();
+}
+
+class _AppLockWrapperState extends State<AppLockWrapper> {
+  bool _isUnlocked = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isUnlocked) {
+      return widget.child;
+    }
+    
+    // Lazy imports inside file to keep code structure clean
+    return AppLockOverlayScreen(
+      onUnlocked: () {
+        setState(() {
+          _isUnlocked = true;
+        });
+      },
     );
   }
 }

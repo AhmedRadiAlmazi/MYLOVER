@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:uuid/uuid.dart';
+import 'package:local_auth/local_auth.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/common_widgets.dart';
@@ -53,12 +54,43 @@ class _SecretBoxScreenState extends ConsumerState<SecretBoxScreen> {
   Future<void> _unlock() async {
     HapticFeedback.mediumImpact();
     setState(() => _isUnlocking = true);
-    await Future.delayed(const Duration(milliseconds: 800));
+    
+    final LocalAuthentication auth = LocalAuthentication();
+    try {
+      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
+      final bool canAuthenticate = canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+
+      if (canAuthenticate) {
+        final bool didAuthenticate = await auth.authenticate(
+          localizedReason: 'يرجى إثبات هويتك لفتح الصندوق السري',
+          options: const AuthenticationOptions(
+            biometricOnly: false,
+            stickyAuth: true,
+          ),
+        );
+
+        if (didAuthenticate) {
+          if (mounted) {
+            setState(() {
+              _isUnlocking = false;
+              _isUnlocked = true;
+            });
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      // Fallback
+    }
+
     if (mounted) {
-      setState(() {
-        _isUnlocking = false;
-        _isUnlocked = true;
-      });
+      setState(() => _isUnlocking = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('فشل التحقق من الهوية، يرجى المحاولة مرة أخرى'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 

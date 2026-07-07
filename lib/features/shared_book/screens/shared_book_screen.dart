@@ -60,7 +60,7 @@ class SharedBookScreen extends ConsumerWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: InkWell(
                   onTap: () {
-                    context.push('/shared-book/page/${page.id}');
+                    context.push('/shared-book/page-detail/${page.id}');
                   },
                   borderRadius: BorderRadius.circular(16),
                   child: Padding(
@@ -132,7 +132,7 @@ class SharedBookScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          context.push('/shared-book/page/new');
+          context.push('/shared-book/page-new');
         },
         tooltip: 'إضافة صفحة جديدة',
         child: const Icon(Icons.add),

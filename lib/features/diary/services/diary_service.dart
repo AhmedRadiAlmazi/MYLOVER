@@ -28,7 +28,12 @@ class DiaryService {
     
     // حفظ محلي أولاً (Optimistic UI)
     final currentCached = _cacheService.getDiaries(coupleId);
-    currentCached.insert(0, map);
+    final index = currentCached.indexWhere((element) => element['id'] == entry.id);
+    if (index != -1) {
+      currentCached[index] = map;
+    } else {
+      currentCached.insert(0, map);
+    }
     await _cacheService.saveDiaries(coupleId, currentCached);
     
     try {
@@ -93,7 +98,7 @@ class DiaryService {
       'title': entry.title,
       'body': entry.body,
       'mood': entry.mood,
-      'moodIconCodePoint': entry.moodIcon.codePoint, // تخزين الرمز فقط
+      'moodIconCodePoint': entry.moodIconCodePoint, // تخزين الرمز فقط
       'date': entry.date.toIso8601String(),
       'authorName': entry.authorName,
       'isShared': entry.isShared,
@@ -107,7 +112,7 @@ class DiaryService {
       title: map['title'] ?? '',
       body: map['body'] ?? '',
       mood: map['mood'] ?? '',
-      moodIcon: IconData(map['moodIconCodePoint'] ?? 0xe533, fontFamily: 'MaterialIcons'),
+      moodIconCodePoint: map['moodIconCodePoint'] ?? 0xe533,
       date: map['date'] != null ? DateTime.parse(map['date']) : DateTime.now(),
       authorName: map['authorName'] ?? '',
       isShared: map['isShared'] ?? false,

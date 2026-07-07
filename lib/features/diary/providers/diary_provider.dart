@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart' show IconData, Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/models/app_models.dart' hide currentUserProvider, currentPartnerProvider;
+import '../../../core/models/app_models.dart';
 import '../../../core/services/cache_service.dart';
 import '../../../features/diary/services/diary_service.dart';
 import '../../auth/providers/auth_provider.dart';

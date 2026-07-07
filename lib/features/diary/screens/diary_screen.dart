@@ -19,6 +19,8 @@ class DiaryScreen extends ConsumerStatefulWidget {
 
 class _DiaryScreenState extends ConsumerState<DiaryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isSearching = false;
+  String _searchQuery = '';
 
   final List<String> _tabs = ['يومياتي', 'يومياته/يومياتها', 'مشتركة'];
 
@@ -55,29 +57,66 @@ class _DiaryScreenState extends ConsumerState<DiaryScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     final entriesStream = ref.watch(diaryEntriesProvider);
     final entries = ref.watch(filteredDiaryProvider);
+    
+    final filteredEntries = _searchQuery.isEmpty
+        ? entries
+        : entries
+            .where((e) =>
+                e.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                e.body.toLowerCase().contains(_searchQuery.toLowerCase()))
+            .toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background.withOpacity(0.95),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: AppColors.textPrimary),
-          onPressed: () => context.pop(),
+          icon: Icon(_isSearching ? Icons.close_rounded : Icons.arrow_back_ios_rounded, color: AppColors.textPrimary),
+          onPressed: () {
+            if (_isSearching) {
+              setState(() {
+                _isSearching = false;
+                _searchQuery = '';
+              });
+            } else {
+              context.pop();
+            }
+          },
         ),
-        title: Text(
-          'يومياتنا',
-          style: GoogleFonts.tajawal(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        centerTitle: true,
+        title: _isSearching
+            ? TextField(
+                autofocus: true,
+                style: GoogleFonts.tajawal(color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'ابحث في اليوميات...',
+                  hintStyle: GoogleFonts.tajawal(color: AppColors.textHint),
+                  border: InputBorder.none,
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val;
+                  });
+                },
+              )
+            : Text(
+                'يومياتنا',
+                style: GoogleFonts.tajawal(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+        centerTitle: !_isSearching,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded, color: AppColors.textPrimary),
-            onPressed: () {},
-          ),
+          if (!_isSearching)
+            IconButton(
+              icon: const Icon(Icons.search_rounded, color: AppColors.textPrimary),
+              onPressed: () {
+                setState(() {
+                  _isSearching = true;
+                });
+              },
+            ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -93,19 +132,19 @@ class _DiaryScreenState extends ConsumerState<DiaryScreen> with SingleTickerProv
       body: entriesStream.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, s) => Center(child: Text('حدث خطأ في جلب اليوميات', style: GoogleFonts.tajawal(color: Colors.white))),
-        data: (_) => entries.isEmpty
+        data: (_) => filteredEntries.isEmpty
             ? EmptyStateWidget(
                 icon: Icons.menu_book_rounded,
-                title: 'لا توجد يوميات بعد',
-                subtitle: 'ابدأ بكتابة أول يوميات لك',
-                actionText: 'اكتب الآن',
-                action: () => context.push('/diary-entry'),
+                title: _searchQuery.isEmpty ? 'لا توجد يوميات بعد' : 'لا توجد نتائج',
+                subtitle: _searchQuery.isEmpty ? 'ابدأ بكتابة أول يوميات لك' : 'جرب البحث عن كلمات أخرى',
+                actionText: _searchQuery.isEmpty ? 'اكتب الآن' : null,
+                action: _searchQuery.isEmpty ? () => context.push('/diary-entry') : null,
               )
             : ListView.builder(
                 padding: const EdgeInsets.all(20),
-                itemCount: entries.length,
+                itemCount: filteredEntries.length,
                 itemBuilder: (context, index) {
-                  final entry = entries[index];
+                  final entry = filteredEntries[index];
                   final moodColor = _moodColors[entry.moodIcon] ?? AppColors.primary;
                   return _buildDiaryCard(entry, moodColor, index);
                 },
@@ -128,7 +167,7 @@ class _DiaryScreenState extends ConsumerState<DiaryScreen> with SingleTickerProv
 
   Widget _buildDiaryCard(DiaryModel entry, Color moodColor, int index) {
     return GestureDetector(
-      onTap: () => context.push('/diary-entry'),
+      onTap: () => context.push('/diary-entry', extra: entry),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
