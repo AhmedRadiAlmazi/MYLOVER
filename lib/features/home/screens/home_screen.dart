@@ -14,6 +14,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../widgets/daily_quote_card.dart';
 import '../widgets/love_counter_card.dart';
 import '../widgets/quick_actions_grid.dart';
+import '../widgets/daily_challenge_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -195,6 +196,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       .animate()
                       .slideY(begin: 0.2, delay: 150.ms)
                       .fadeIn(delay: 150.ms, duration: 500.ms),
+
+                  const SizedBox(height: 20),
+
+                  // Daily Challenge Card
+                  const DailyChallengeWidget()
+                      .animate()
+                      .slideY(begin: 0.2, delay: 200.ms)
+                      .fadeIn(delay: 200.ms, duration: 500.ms),
 
                   const SizedBox(height: 28),
 

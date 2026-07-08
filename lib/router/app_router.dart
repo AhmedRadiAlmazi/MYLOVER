@@ -41,6 +41,14 @@ import '../features/bucket_list/screens/bucket_list_screen.dart';
 import '../features/games/screens/games_screen.dart';
 import '../features/games/screens/xo_game_screen.dart';
 import '../features/games/screens/truth_dare_screen.dart';
+import '../features/games/screens/who_knows_screen.dart';
+import '../features/games/screens/complete_sentence_screen.dart';
+import '../features/games/screens/draw_guess_screen.dart';
+import '../features/games/screens/voice_challenge_screen.dart';
+import '../features/games/screens/wheel_screen.dart';
+import '../features/games/screens/memories_quiz_screen.dart';
+import '../features/games/screens/guess_picture_screen.dart';
+import '../features/games/screens/achievements_screen.dart';
 
 // Stats & AI
 import '../features/stats/screens/stats_screen.dart';
@@ -257,6 +265,46 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/truth-dare',
         name: 'truth-dare',
         builder: (context, state) => const TruthDareScreen(),
+      ),
+      GoRoute(
+        path: '/who-knows',
+        name: 'who-knows',
+        builder: (context, state) => const WhoKnowsScreen(),
+      ),
+      GoRoute(
+        path: '/complete-sentence',
+        name: 'complete-sentence',
+        builder: (context, state) => const CompleteSentenceScreen(),
+      ),
+      GoRoute(
+        path: '/draw-guess',
+        name: 'draw-guess',
+        builder: (context, state) => const DrawGuessScreen(),
+      ),
+      GoRoute(
+        path: '/voice-challenge',
+        name: 'voice-challenge',
+        builder: (context, state) => const VoiceChallengeScreen(),
+      ),
+      GoRoute(
+        path: '/wheel-surprises',
+        name: 'wheel-surprises',
+        builder: (context, state) => const WheelScreen(),
+      ),
+      GoRoute(
+        path: '/memories-quiz',
+        name: 'memories-quiz',
+        builder: (context, state) => const MemoriesQuizScreen(),
+      ),
+      GoRoute(
+        path: '/guess-picture',
+        name: 'guess-picture',
+        builder: (context, state) => const GuessPictureScreen(),
+      ),
+      GoRoute(
+        path: '/achievements',
+        name: 'achievements',
+        builder: (context, state) => const AchievementsScreen(),
       ),
 
       // ── Stats & AI ───────────────────────────────────────
