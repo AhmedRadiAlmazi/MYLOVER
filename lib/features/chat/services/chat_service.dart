@@ -1,8 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/app_models.dart';
+import '../../../core/services/cache_service.dart';
+import '../../../core/services/encryption_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final EncryptionService? _encryptionService;
+  final CacheService? _cacheService;
+
+  ChatService([this._encryptionService, this._cacheService]);
 
   // الحصول على معرف الغرفة الفريد بين المستخدمين
   String _getChatRoomId(String userId1, String userId2) {
@@ -11,57 +17,144 @@ class ChatService {
     return ids.join('_');
   }
 
-  // إرسال رسالة
+  // إرسال رسالة مع التخزين المحلي الفوري والتشفير الخياري E2EE
   Future<void> sendMessage({
     required String senderId,
     required String receiverId,
     required String text,
     MessageType type = MessageType.text,
     String? mediaUrl,
+    String? thumbnailUrl,
+    String? localPath,
     String? replyToId,
+    bool enableEncryption = true,
   }) async {
     final String chatRoomId = _getChatRoomId(senderId, receiverId);
+
+    // التشفير إن كان متاحاً ورسالة نصية
+    String finalText = text;
+    bool isEncrypted = false;
+
+    if (enableEncryption && _encryptionService != null && type == MessageType.text && text.isNotEmpty) {
+      try {
+        finalText = await _encryptionService!.encryptText(text);
+        isEncrypted = true;
+      } catch (e) {
+        finalText = text;
+        isEncrypted = false;
+      }
+    }
     
-    // إنشاء كائن الرسالة
+    final String docId = _firestore.collection('chats').doc(chatRoomId).collection('messages').doc().id;
+
+    // 1. إنشاء كائن الرسالة بحالة معلقة isPending = true
     final MessageModel newMessage = MessageModel(
-      id: _firestore.collection('chats').doc(chatRoomId).collection('messages').doc().id,
+      id: docId,
       senderId: senderId,
-      text: text,
+      text: finalText,
       type: type,
       mediaUrl: mediaUrl,
+      thumbnailUrl: thumbnailUrl,
+      localPath: localPath,
       timestamp: DateTime.now(),
       replyToId: replyToId,
+      isEncrypted: isEncrypted,
+      isPending: true, // تظهر فوراً مع حالة جاري الإرسال ⏳
     );
 
-    // إضافة الرسالة إلى قاعدة البيانات
-    await _firestore
-        .collection('chats')
-        .doc(chatRoomId)
-        .collection('messages')
-        .doc(newMessage.id)
-        .set(_messageToMap(newMessage));
-        
-    // تحديث آخر رسالة في مستند الغرفة الرئيسي (لتسهيل عرض قائمة المحادثات مستقبلاً)
-    await _firestore.collection('chats').doc(chatRoomId).set({
-      'lastMessage': text,
-      'lastMessageTime': newMessage.timestamp.toIso8601String(),
-      'lastMessageType': type.toString(),
-      'users': [senderId, receiverId],
-    }, SetOptions(merge: true));
+    // 2. حفظ فورياً في قاعدة البيانات المحلية Hive للظهور المباشر الشاشات
+    if (_cacheService != null) {
+      await _cacheService!.saveSingleLocalMessage(chatRoomId, newMessage);
+    }
+
+    final Map<String, dynamic> messageMap = _messageToMap(newMessage);
+
+    // 3. محاولة الإرسال للشبكة مباشر
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(chatRoomId)
+          .collection('messages')
+          .doc(newMessage.id)
+          .set(messageMap);
+          
+      await _firestore.collection('chats').doc(chatRoomId).set({
+        'lastMessage': isEncrypted ? '🔒 [رسالة مشفرة]' : text,
+        'lastMessageTime': newMessage.timestamp.toIso8601String(),
+        'lastMessageType': type.name,
+        'users': [senderId, receiverId],
+      }, SetOptions(merge: true));
+
+      // عند نجاح الإرسال يتم تغيير الحالة محلية إلى تم الإرسال ✔
+      if (_cacheService != null) {
+        await _cacheService!.markMessageSynced(chatRoomId, newMessage.id);
+      }
+    } catch (e) {
+      // في حال انقطاع الشبكة، تُضاف إلى طابور الانتظار ليقوم SyncManager بإرسالها أوتوماتيكياً
+      if (_cacheService != null) {
+        await _cacheService!.addPendingAction({
+          'id': newMessage.id,
+          'actionType': 'SEND_MESSAGE',
+          'chatRoomId': chatRoomId,
+          'messageData': messageMap,
+        });
+      }
+    }
   }
 
-  // جلب الرسائل كبث حي (Stream)
-  Stream<List<MessageModel>> getMessages(String userId, String partnerId) {
+  // جلب الرسائل كبث حي مع الترقيم (Pagination: 20 رسالة لشبكات 2G)
+  Stream<List<MessageModel>> getMessages(
+    String userId,
+    String partnerId, {
+    int limit = 20,
+    DocumentSnapshot? startAfter,
+  }) {
     final String chatRoomId = _getChatRoomId(userId, partnerId);
     
-    return _firestore
+    Query<Map<String, dynamic>> query = _firestore
         .collection('chats')
         .doc(chatRoomId)
         .collection('messages')
         .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => _messageFromMap(doc.data(), doc.id)).toList();
+        .limit(limit);
+
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+    
+    return query.snapshots().asyncMap((snapshot) async {
+      final List<MessageModel> list = [];
+      for (var doc in snapshot.docs) {
+        final msg = _messageFromMap(doc.data(), doc.id);
+        if (msg.isEncrypted && _encryptionService != null) {
+          final decryptedText = await _encryptionService!.decryptText(msg.text);
+          list.add(MessageModel(
+            id: msg.id,
+            senderId: msg.senderId,
+            text: decryptedText,
+            type: msg.type,
+            mediaUrl: msg.mediaUrl,
+            thumbnailUrl: msg.thumbnailUrl,
+            localPath: msg.localPath,
+            timestamp: msg.timestamp,
+            isRead: msg.isRead,
+            isDeleted: msg.isDeleted,
+            replyToId: msg.replyToId,
+            isPinned: msg.isPinned,
+            isEncrypted: true,
+            isPending: msg.isPending,
+          ));
+        } else {
+          list.add(msg);
+        }
+      }
+
+      // حفظ الدفعة المستلمة في الـ Cache المحلي
+      if (_cacheService != null && list.isNotEmpty) {
+        await _cacheService!.cacheMessages(chatRoomId, list);
+      }
+
+      return list;
     });
   }
   
@@ -69,25 +162,27 @@ class ChatService {
   Future<void> markMessagesAsRead(String userId, String partnerId) async {
     final String chatRoomId = _getChatRoomId(userId, partnerId);
     
-    // جلب الرسائل التي لم تُقرأ وأرسلها الشريك
-    final unreadMessages = await _firestore
-        .collection('chats')
-        .doc(chatRoomId)
-        .collection('messages')
-        .where('senderId', isEqualTo: partnerId)
-        .where('isRead', isEqualTo: false)
-        .get();
-        
-    final batch = _firestore.batch();
-    
-    for (var doc in unreadMessages.docs) {
-      batch.update(doc.reference, {'isRead': true});
-    }
-    
-    await batch.commit();
+    try {
+      final unreadMessages = await _firestore
+          .collection('chats')
+          .doc(chatRoomId)
+          .collection('messages')
+          .where('senderId', isEqualTo: partnerId)
+          .where('isRead', isEqualTo: false)
+          .limit(100)
+          .get();
+          
+      if (unreadMessages.docs.isEmpty) return;
+
+      final batch = _firestore.batch();
+      for (var doc in unreadMessages.docs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+      await batch.commit();
+    } catch (_) {}
   }
 
-  // دوال التحويل من وإلى Map لدعم الأنواع المعقدة
+  // دوال التحويل من وإلى Map
   Map<String, dynamic> _messageToMap(MessageModel msg) {
     return {
       'id': msg.id,
@@ -95,11 +190,15 @@ class ChatService {
       'text': msg.text,
       'type': msg.type.index,
       'mediaUrl': msg.mediaUrl,
+      'thumbnailUrl': msg.thumbnailUrl,
+      'localPath': msg.localPath,
       'timestamp': msg.timestamp.toIso8601String(),
       'isRead': msg.isRead,
       'isDeleted': msg.isDeleted,
       'replyToId': msg.replyToId,
       'isPinned': msg.isPinned,
+      'isEncrypted': msg.isEncrypted,
+      'isPending': msg.isPending,
     };
   }
 
@@ -108,13 +207,17 @@ class ChatService {
       id: id,
       senderId: map['senderId'] ?? '',
       text: map['text'] ?? '',
-      type: MessageType.values[map['type'] ?? 0],
+      type: MessageType.values[(map['type'] is int) ? map['type'] : 0],
       mediaUrl: map['mediaUrl'],
+      thumbnailUrl: map['thumbnailUrl'],
+      localPath: map['localPath'],
       timestamp: map['timestamp'] != null ? DateTime.parse(map['timestamp']) : DateTime.now(),
       isRead: map['isRead'] ?? false,
       isDeleted: map['isDeleted'] ?? false,
       replyToId: map['replyToId'],
       isPinned: map['isPinned'] ?? false,
+      isEncrypted: map['isEncrypted'] ?? false,
+      isPending: map['isPending'] ?? false,
     );
   }
 }

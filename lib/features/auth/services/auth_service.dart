@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:pointycastle/digests/sha256.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -88,12 +90,18 @@ class AuthService {
 
   // ── Offline Credentials Verification ───────────────────────────
   
+  String _hashPassword(String password) {
+    final bytes = utf8.encode('ymlover_salt_$password');
+    final digest = SHA256Digest().process(Uint8List.fromList(bytes));
+    return base64Encode(digest);
+  }
+
   Future<void> _saveOfflineCache(String email, String password, String uid) async {
     final prefs = await SharedPreferences.getInstance();
     final cacheKey = 'offline_user_${email.trim().toLowerCase()}';
     final data = {
       'email': email.trim().toLowerCase(),
-      'password': password,
+      'passwordHash': _hashPassword(password),
       'uid': uid,
     };
     await _secureStorage.write(key: cacheKey, value: jsonEncode(data));
@@ -107,7 +115,8 @@ class AuthService {
     
     if (cacheDataStr != null) {
       final Map<String, dynamic> data = jsonDecode(cacheDataStr);
-      if (data['email'] == email.trim().toLowerCase() && data['password'] == password) {
+      final passwordHash = _hashPassword(password);
+      if (data['email'] == email.trim().toLowerCase() && (data['passwordHash'] == passwordHash || data['password'] == password)) {
         await prefs.setString('offline_active_uid', data['uid']);
         return data['uid'];
       }

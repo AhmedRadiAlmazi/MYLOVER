@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    // Chats collection
+    match /chats/{chatId} {
+      allow read, write: if isAuthenticated() && (
+        resource == null || request.auth.uid in resource.data.users
+      );
+
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // Diaries collection
+    match /diaries/{coupleId} {
+      allow read, write: if isAuthenticated();
+
+      match /entries/{entryId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // Wishes & Bucket List
+    match /wishes/{wishId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Events & Calendar
+    match /events/{eventId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Shared Book
+    match /shared_books/{bookId} {
+      allow read, write: if isAuthenticated();
+
+      match /pages/{pageId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+  }
+}

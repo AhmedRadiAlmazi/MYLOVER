@@ -118,6 +118,10 @@ class MessageModel {
   final bool isPinned;
   final bool isEncrypted;
 
+  final bool isPending;
+  final String? thumbnailUrl;
+  final String? localPath;
+
   const MessageModel({
     required this.id,
     required this.senderId,
@@ -130,6 +134,9 @@ class MessageModel {
     this.replyToId,
     this.isPinned = false,
     this.isEncrypted = false,
+    this.isPending = false,
+    this.thumbnailUrl,
+    this.localPath,
   });
 
   static List<MessageModel> get mockMessages => [

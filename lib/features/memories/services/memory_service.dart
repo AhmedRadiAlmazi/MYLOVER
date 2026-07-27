@@ -71,13 +71,24 @@ class MemoryService {
     await _memoriesCollection(coupleId).doc(memory.id).set(memoryData);
   }
 
-  // جلب الذكريات كبث حي
-  Stream<List<MemoryModel>> getMemoriesStream(String userId, String partnerId) {
+  // جلب الذكريات كبث حي مع الترقيم Pagination لشبكات 2G (20 ذكرى لكل دفعة)
+  Stream<List<MemoryModel>> getMemoriesStream(
+    String userId,
+    String partnerId, {
+    int limit = 20,
+    DocumentSnapshot? startAfter,
+  }) {
     final coupleId = _getCoupleId(userId, partnerId);
-    return _memoriesCollection(coupleId)
+    
+    Query<Map<String, dynamic>> query = _memoriesCollection(coupleId)
         .orderBy('date', descending: true)
-        .snapshots()
-        .map((snapshot) {
+        .limit(limit);
+
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+
+    return query.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         return MemoryModel(

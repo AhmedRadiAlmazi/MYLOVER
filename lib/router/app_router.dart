@@ -6,6 +6,7 @@ import 'scaffold_with_nav_bar.dart';
 import '../core/models/app_models.dart';
 
 // Auth
+import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/onboarding_screen.dart';
 import '../features/auth/screens/login_screen.dart';
@@ -105,10 +106,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final calendarNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'calendar');
   final profileNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profile');
 
+  final authState = ref.watch(authStateChangesProvider);
+  final currentUser = ref.watch(currentUserProvider).value;
+
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     debugLogDiagnostics: false,
+    redirect: (context, state) {
+      final isAuthLoading = authState.isLoading;
+      final isLoggedIn = authState.value != null;
+      final isPaired = currentUser != null && currentUser.partnerId != null && currentUser.partnerId!.isNotEmpty;
+      final loc = state.matchedLocation;
+
+      // Allow splash to perform initialization
+      if (loc == '/splash') return null;
+
+      final publicRoutes = ['/login', '/register', '/onboarding'];
+      final isPublicRoute = publicRoutes.contains(loc);
+
+      if (!isLoggedIn && !isPublicRoute) {
+        return '/login';
+      }
+
+      if (isLoggedIn && !isPaired && loc != '/pairing' && !isPublicRoute) {
+        return '/pairing';
+      }
+
+      if (isLoggedIn && isPaired && (isPublicRoute || loc == '/pairing')) {
+        return '/home';
+      }
+
+      return null;
+    },
     routes: [
       // ── Auth Routes ──────────────────────────────────────
       GoRoute(

@@ -34,8 +34,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = ref.watch(currentUserProvider).value;
-    final partner = ref.watch(currentPartnerProvider).value;
+    final currentUserAsync = ref.watch(currentUserProvider);
+    final partnerAsync = ref.watch(currentPartnerProvider);
+
+    final currentUser = currentUserAsync.value;
+    final partner = partnerAsync.value;
 
     int daysTogether = 0;
     if (currentUser != null && currentUser.relationshipStart != null) {

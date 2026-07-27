@@ -1,45 +1,58 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:convert';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) => StorageService());
 
 class StorageService {
-  /// تحويل الملف إلى Base64 للحفظ كبيانات مباشرة في Firestore
+  final FirebaseStorage _storage = FirebaseStorage.instance;
+
+  /// رفع ملف إلى Firebase Storage وإعادة رابط التحميل (Download URL)
   Future<String> uploadFile(File file, String folderName) async {
     try {
-      final bytes = await file.readAsBytes();
-      final base64String = base64Encode(bytes);
-      return 'base64:$base64String';
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
+      final ref = _storage.ref().child(folderName).child(fileName);
+      final uploadTask = await ref.putFile(file);
+      return await uploadTask.ref.getDownloadURL();
     } catch (e) {
-      throw Exception('حدث خطأ أثناء معالجة الملف: $e');
+      throw Exception('حدث خطأ أثناء رفع الملف: $e');
     }
   }
 
-  /// تحويل البايتات إلى Base64 للحفظ كبيانات مباشرة في Firestore
+  /// رفع بايتات إلى Firebase Storage وإعادة رابط التحميل (Download URL)
   Future<String> uploadBytes(Uint8List bytes, String folderName, {String extension = 'png'}) async {
     try {
-      final base64String = base64Encode(bytes);
-      return 'base64:$base64String';
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final ref = _storage.ref().child(folderName).child(fileName);
+      final uploadTask = await ref.putData(bytes, SettableMetadata(contentType: 'image/$extension'));
+      return await uploadTask.ref.getDownloadURL();
     } catch (e) {
-      throw Exception('حدث خطأ أثناء معالجة الملف: $e');
+      throw Exception('حدث خطأ أثناء رفع البيانات: $e');
     }
   }
 
-  /// تحويل الصورة الشخصية إلى Base64 للحفظ كبيانات مباشرة في Firestore
+  /// رفع الصورة الشخصية إلى Firebase Storage
   Future<String> uploadAvatar(File file, String userId) async {
     try {
-      final bytes = await file.readAsBytes();
-      final base64String = base64Encode(bytes);
-      return 'base64:$base64String';
+      final ref = _storage.ref().child('avatars').child('$userId.jpg');
+      final uploadTask = await ref.putFile(file);
+      return await uploadTask.ref.getDownloadURL();
     } catch (e) {
-      throw Exception('حدث خطأ أثناء معالجة الصورة الشخصية: $e');
+      throw Exception('حدث خطأ أثناء رفع الصورة الشخصية: $e');
     }
   }
 
-  /// حذف ملف (لا يوجد شيء لحذفه في السيرفر بالنسبة للـ Base64)
+  /// حذف ملف عبر الرابط الخاص به من Firebase Storage
   Future<void> deleteFileFromUrl(String fileUrl) async {
-    // لا يتطلب أي إجراء لأن البيانات مخزنة في الوثيقة نفسها وتُحذف معها تلقائياً
+    try {
+      if (fileUrl.startsWith('http')) {
+        final ref = _storage.refFromURL(fileUrl);
+        await ref.delete();
+      }
+    } catch (e) {
+      // Swallowed safely if file doesn't exist on server
+    }
   }
 }
+

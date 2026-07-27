@@ -189,11 +189,18 @@ class MessageBubble extends StatelessWidget {
                   ),
                   if (isMe) ...[
                     const SizedBox(width: 4),
-                    Icon(
-                      Icons.done_all,
-                      size: 14,
-                      color: message.isRead ? AppColors.info : AppColors.textHint,
-                    ),
+                    if (message.isPending)
+                      const Icon(
+                        Icons.access_time_rounded,
+                        size: 13,
+                        color: Colors.amber,
+                      )
+                    else
+                      Icon(
+                        Icons.done_all,
+                        size: 14,
+                        color: message.isRead ? AppColors.info : AppColors.textHint,
+                      ),
                   ],
                 ],
               ),
