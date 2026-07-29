@@ -28,7 +28,7 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
   static const _primaryColorKey = 'primary_color';
 
   ThemeNotifier() : super(const ThemeState(
-    themeMode: ThemeMode.dark, 
+    themeMode: ThemeMode.light, 
     primaryColor: AppColors.primary,
   )) {
     _loadSettings();
@@ -39,7 +39,7 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
     
     // Load Theme Mode
     final modeStr = prefs.getString(_themeModeKey);
-    ThemeMode mode = ThemeMode.dark;
+    ThemeMode mode = ThemeMode.light;
     if (modeStr == 'light') mode = ThemeMode.light;
     else if (modeStr == 'system') mode = ThemeMode.system;
 

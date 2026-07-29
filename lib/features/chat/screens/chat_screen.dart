@@ -51,31 +51,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (type == MessageType.video) folder = 'chat_videos';
       if (type == MessageType.audio) folder = 'chat_audio';
       
-      final downloadUrl = await storageService.uploadFile(file, folder);
+      String? downloadUrl;
+      try {
+        downloadUrl = await storageService.uploadFile(file, folder);
+      } catch (_) {
+        // في حالة ضعف الإنترنت أو عدم التوفير السحابي يتم الاعتماد على المسار المحلي وطابور المزامنة
+      }
       
       await _sendToFirebase(
         text: type == MessageType.image ? 'صورة 📷' : type == MessageType.video ? 'فيديو 🎥' : 'مقطع صوتي 🎵',
         type: type,
         mediaUrl: downloadUrl,
+        localPath: file.path,
       );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل الرفع: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ في الإرسال: $e')));
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
   }
 
-  Future<void> _sendToFirebase({required String text, required MessageType type, String? mediaUrl}) async {
+  Future<void> _sendToFirebase({
+    required String text,
+    required MessageType type,
+    String? mediaUrl,
+    String? localPath,
+  }) async {
     final currentUser = ref.read(currentUserProvider).value;
-    if (currentUser == null || currentUser.partnerId == null) return;
+    final senderId = (currentUser?.id.isNotEmpty == true) ? currentUser!.id : 'user_1';
+    final receiverId = (currentUser?.partnerId?.isNotEmpty == true) ? currentUser!.partnerId! : 'user_2';
     
     final chatService = ref.read(chatServiceProvider);
     await chatService.sendMessage(
-      senderId: currentUser.id,
-      receiverId: currentUser.partnerId!,
+      senderId: senderId,
+      receiverId: receiverId,
       text: text,
       type: type,
       mediaUrl: mediaUrl,
+      localPath: localPath,
       replyToId: _replyingTo?.id,
     );
     

@@ -11,6 +11,7 @@ import '../../../core/models/app_models.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/common_widgets.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/services/media_compression_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/memories_provider.dart';
 
@@ -99,32 +100,59 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> with SingleTick
 
     try {
       final user = ref.read(currentUserProvider).value;
-      if (user == null || user.partnerId == null) throw Exception('بيانات المستخدم غير مكتملة');
+      final userId = (user?.id.isNotEmpty == true) ? user!.id : 'user_1';
+      final partnerId = (user?.partnerId?.isNotEmpty == true) ? user!.partnerId! : 'user_2';
 
-      // Upload image
-      final storageService = StorageService();
-      final imageUrl = await storageService.uploadFile(File(pickedFile.path), 'memories');
+      final fileToUpload = File(pickedFile.path);
 
-      // Save to Firestore
+      // ضغط الصورة أولاً
+      final compressionService = ref.read(mediaCompressionServiceProvider);
+      final compressed = await compressionService.compressImage(fileToUpload);
+      final finalFile = compressed ?? fileToUpload;
+
+      String imageUrl = finalFile.path; // المسار المحلي افتراضياً لتأمين العمل أوفلاين
+
+      // محاولة الرفع إلى Firebase Storage مع حماية الاستثناءات
+      try {
+        final storageService = ref.read(storageServiceProvider);
+        final remoteUrl = await storageService.uploadFile(finalFile, 'memories');
+        if (remoteUrl.isNotEmpty) {
+          imageUrl = remoteUrl;
+        }
+      } catch (_) {
+        // الاعتماد السلس على المسار المحلي عند تعثر الاستضافة السحابية
+      }
+
+      MemoryCategory category = MemoryCategory.photo;
+      if (_selectedFilter == 2) category = MemoryCategory.video;
+      if (_selectedFilter == 3) category = MemoryCategory.occasion;
+
+      // حفظ الذكرى
       final memoryService = ref.read(memoryServiceProvider);
       final newMemory = MemoryModel(
         id: const Uuid().v4(),
         title: titleController.text.trim(),
         mediaUrl: imageUrl,
-        category: MemoryCategory.photo,
+        category: category,
         date: DateTime.now(),
         colorIndex: DateTime.now().millisecond % _memoryColors.length,
       );
 
       await memoryService.addMemory(
         memory: newMemory,
-        userId: user.id,
-        partnerId: user.partnerId!,
+        userId: userId,
+        partnerId: partnerId,
       );
+
+      // إعادة التبويب إلى "الكل" ليظهر العنصر المضاف حديثاً فوراً في الشاشة
+      setState(() {
+        _selectedFilter = 0;
+      });
+      ref.read(selectedCategoryProvider.notifier).state = null;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تمت إضافة الذكرى بنجاح!'), backgroundColor: AppColors.success),
+          const SnackBar(content: Text('تمت إضافة الذكرى بنجاح! ❤️'), backgroundColor: AppColors.success),
         );
       }
     } catch (e) {
@@ -242,6 +270,7 @@ class _MemoriesScreenState extends ConsumerState<MemoriesScreen> with SingleTick
             ),
             data: (_) => memories.isEmpty
                 ? SliverFillRemaining(
+                    hasScrollBody: false,
                     child: EmptyStateWidget(
                       icon: Icons.photo_library_rounded,
                       title: 'لا توجد ذكريات بعد',

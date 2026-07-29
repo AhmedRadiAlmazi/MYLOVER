@@ -68,7 +68,8 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildMessageContent(BuildContext context) {
-    if (message.type == MessageType.image && message.mediaUrl != null) {
+    final displayUrl = message.mediaUrl ?? message.localPath ?? message.thumbnailUrl;
+    if (message.type == MessageType.image && displayUrl != null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -76,7 +77,7 @@ class MessageBubble extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: SmartImage(
-              imageUrl: message.mediaUrl!,
+              imageUrl: displayUrl,
               fit: BoxFit.cover,
             ),
           ),

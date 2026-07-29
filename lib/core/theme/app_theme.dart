@@ -9,15 +9,15 @@ class AppTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: isDark ? Brightness.dark : Brightness.light,
-      surface: isDark ? AppColors.surface : Colors.white,
+      surface: isDark ? const Color(0xFF2D1524) : AppColors.surface,
     );
 
-    final backgroundColor = isDark ? AppColors.background : const Color(0xFFF5F5F7);
-    final cardColor = isDark ? AppColors.card : Colors.white;
-    final textPrimary = isDark ? AppColors.textPrimary : const Color(0xFF1A1A2E);
-    final textSecondary = isDark ? AppColors.textSecondary : const Color(0xFF6B6B80);
-    final textHint = isDark ? AppColors.textHint : const Color(0xFFA0A0B0);
-    final dividerColor = isDark ? AppColors.divider : const Color(0xFFE5E5EA);
+    final backgroundColor = isDark ? const Color(0xFF1E1018) : AppColors.background;
+    final cardColor = isDark ? const Color(0xFF2D1524) : AppColors.card;
+    final textPrimary = isDark ? const Color(0xFFFFF0F5) : AppColors.textPrimary;
+    final textSecondary = isDark ? const Color(0xFFD98CA3) : AppColors.textSecondary;
+    final textHint = isDark ? const Color(0xFF9E8694) : AppColors.textHint;
+    final dividerColor = isDark ? const Color(0xFF4A1A2E) : AppColors.divider;
 
     return ThemeData(
       useMaterial3: true,

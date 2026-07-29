@@ -223,8 +223,12 @@ class _SurpriseBoxScreenState extends ConsumerState<SurpriseBoxScreen> with Sing
                         if (user != null && user.partnerId != null) {
                           String? imageUrl;
                           if (selectedImage != null) {
-                            final storageService = StorageService();
-                            imageUrl = await storageService.uploadFile(selectedImage!, 'surprises');
+                            try {
+                              final storageService = ref.read(storageServiceProvider);
+                              imageUrl = await storageService.uploadFile(selectedImage!, 'surprises');
+                            } catch (_) {
+                              imageUrl = selectedImage!.path;
+                            }
                           }
                           
                           final newSurprise = SurpriseModel(

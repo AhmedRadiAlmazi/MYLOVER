@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
 import '../theme/app_colors.dart';
 
@@ -292,12 +293,19 @@ class GlassCard extends StatelessWidget {
           child: Container(
             padding: padding ?? const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: (blurColor ?? Colors.white).withOpacity(opacity),
+              color: (blurColor ?? AppColors.card).withOpacity(0.95),
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(
-                color: Colors.white.withOpacity(borderOpacity),
+                color: AppColors.divider,
                 width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: child,
           ),
@@ -340,9 +348,9 @@ class GradientCard extends StatelessWidget {
         boxShadow: shadow
             ? [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+                  color: AppColors.primary.withOpacity(0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4),
                 ),
               ]
             : null,
@@ -511,43 +519,44 @@ class EmptyStateWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 64, color: AppColors.textHint)
+            Icon(icon, size: 56, color: AppColors.textHint)
                 .animate()
                 .scale()
                 .fadeIn(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Text(
               title,
               style: GoogleFonts.tajawal(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ).animate().fadeIn(delay: const Duration(milliseconds: 200)),
             if (subtitle != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
                 subtitle!,
                 style: GoogleFonts.tajawal(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: AppColors.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: const Duration(milliseconds: 300)),
             ],
             if (action != null && actionText != null) ...[
-              const SizedBox(height: 32),
+              const SizedBox(height: 20),
               GradientButton(
                 text: actionText!,
                 onPressed: action!,
-                width: 200,
-                height: 48,
+                width: 180,
+                height: 44,
               ).animate().fadeIn(delay: const Duration(milliseconds: 400)),
             ],
           ],
@@ -716,9 +725,18 @@ class SmartImage extends StatelessWidget {
         fit: fit,
         errorBuilder: (context, error, stackTrace) => _buildErrorIcon(),
       );
-    } else {
+    } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return Image.network(
         imageUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) => _buildErrorIcon(),
+      );
+    } else {
+      final cleanPath = imageUrl.replaceFirst('file://', '');
+      return Image.file(
+        File(cleanPath),
         width: width,
         height: height,
         fit: fit,
@@ -740,8 +758,10 @@ class SmartImage extends StatelessWidget {
 ImageProvider getSmartImageProvider(String imageUrl) {
   if (imageUrl.startsWith('base64:')) {
     return MemoryImage(base64Decode(imageUrl.substring(7)));
-  } else {
+  } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
     return NetworkImage(imageUrl);
+  } else {
+    return FileImage(File(imageUrl.replaceFirst('file://', '')));
   }
 }
 

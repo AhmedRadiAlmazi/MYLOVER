@@ -49,7 +49,8 @@ class SyncManager {
 
         if (actionType == 'SEND_MESSAGE') {
           final String chatRoomId = action['chatRoomId'];
-          final Map<String, dynamic> messageData = action['messageData'];
+          final Map<String, dynamic> messageData = Map<String, dynamic>.from(action['messageData']);
+          messageData['isPending'] = false;
 
           try {
             await _firestore

@@ -68,6 +68,10 @@ class ChatService {
     }
 
     final Map<String, dynamic> messageMap = _messageToMap(newMessage);
+    
+    // التخزين السحابي يحمل دائماً isPending = false لتعكس نجاح الاستلام
+    final Map<String, dynamic> firestoreMap = Map<String, dynamic>.from(messageMap);
+    firestoreMap['isPending'] = false;
 
     // 3. محاولة الإرسال للشبكة مباشر
     try {
@@ -76,7 +80,7 @@ class ChatService {
           .doc(chatRoomId)
           .collection('messages')
           .doc(newMessage.id)
-          .set(messageMap);
+          .set(firestoreMap);
           
       await _firestore.collection('chats').doc(chatRoomId).set({
         'lastMessage': isEncrypted ? '🔒 [رسالة مشفرة]' : text,
@@ -96,13 +100,13 @@ class ChatService {
           'id': newMessage.id,
           'actionType': 'SEND_MESSAGE',
           'chatRoomId': chatRoomId,
-          'messageData': messageMap,
+          'messageData': firestoreMap,
         });
       }
     }
   }
 
-  // جلب الرسائل كبث حي مع الترقيم (Pagination: 20 رسالة لشبكات 2G)
+  // جلب الرسائل كبث حي مع الترقيم والدمج المحلي عند غياب الإنترنت
   Stream<List<MessageModel>> getMessages(
     String userId,
     String partnerId, {
@@ -126,35 +130,52 @@ class ChatService {
       final List<MessageModel> list = [];
       for (var doc in snapshot.docs) {
         final msg = _messageFromMap(doc.data(), doc.id);
+        String textVal = msg.text;
         if (msg.isEncrypted && _encryptionService != null) {
-          final decryptedText = await _encryptionService!.decryptText(msg.text);
-          list.add(MessageModel(
-            id: msg.id,
-            senderId: msg.senderId,
-            text: decryptedText,
-            type: msg.type,
-            mediaUrl: msg.mediaUrl,
-            thumbnailUrl: msg.thumbnailUrl,
-            localPath: msg.localPath,
-            timestamp: msg.timestamp,
-            isRead: msg.isRead,
-            isDeleted: msg.isDeleted,
-            replyToId: msg.replyToId,
-            isPinned: msg.isPinned,
-            isEncrypted: true,
-            isPending: msg.isPending,
-          ));
-        } else {
-          list.add(msg);
+          try {
+            textVal = await _encryptionService!.decryptText(msg.text);
+          } catch (_) {
+            textVal = msg.text;
+          }
         }
+        
+        // الرسائل القادمة من Firestore تم استلامها بنجاح، لذا تكون isPending دائمًا false
+        list.add(MessageModel(
+          id: msg.id,
+          senderId: msg.senderId,
+          text: textVal,
+          type: msg.type,
+          mediaUrl: msg.mediaUrl,
+          thumbnailUrl: msg.thumbnailUrl,
+          localPath: msg.localPath,
+          timestamp: msg.timestamp,
+          isRead: msg.isRead,
+          isDeleted: msg.isDeleted,
+          replyToId: msg.replyToId,
+          isPinned: msg.isPinned,
+          isEncrypted: msg.isEncrypted,
+          isPending: false, // تم تأكيد وصولها للسيرفر
+        ));
       }
 
-      // حفظ الدفعة المستلمة في الـ Cache المحلي
-      if (_cacheService != null && list.isNotEmpty) {
+      // دمج الرسائل المحلية المعلقة فقط التي لم تُرفع بعد إلى Firebase
+      if (_cacheService != null) {
+        final cached = _cacheService!.getCachedMessages(chatRoomId);
+        for (var c in cached) {
+          if (!list.any((m) => m.id == c.id) && c.isPending) {
+            list.insert(0, c);
+          }
+        }
         await _cacheService!.cacheMessages(chatRoomId, list);
       }
 
       return list;
+    }).handleError((error) {
+      // استرجاع الكاش المحلي فورياً عند حدوث استثناء في الاتصال
+      if (_cacheService != null) {
+        return _cacheService!.getCachedMessages(chatRoomId);
+      }
+      return <MessageModel>[];
     });
   }
   

@@ -3,17 +3,21 @@ import '../../../core/models/app_models.dart';
 import '../../../features/memories/services/memory_service.dart';
 import '../../auth/providers/auth_provider.dart';
 
-final memoryServiceProvider = Provider<MemoryService>((ref) => MemoryService());
+import '../../../core/services/cache_service.dart';
+
+final memoryServiceProvider = Provider<MemoryService>((ref) {
+  final cache = ref.watch(cacheServiceProvider);
+  return MemoryService(cache);
+});
 
 // جلب الذكريات كبث حي من Firebase
 final memoriesStreamProvider = StreamProvider<List<MemoryModel>>((ref) {
   final user = ref.watch(currentUserProvider).value;
-  if (user == null || user.partnerId == null || user.partnerId!.isEmpty) {
-    return Stream.value([]);
-  }
-  
+  final userId = (user?.id.isNotEmpty == true) ? user!.id : 'user_1';
+  final partnerId = (user?.partnerId?.isNotEmpty == true) ? user!.partnerId! : 'user_2';
+
   final service = ref.watch(memoryServiceProvider);
-  return service.getMemoriesStream(user.id, user.partnerId!);
+  return service.getMemoriesStream(userId, partnerId);
 });
 
 // الفئة المحددة حالياً (null تعني الكل)

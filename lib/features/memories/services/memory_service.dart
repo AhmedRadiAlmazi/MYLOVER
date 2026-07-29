@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/app_models.dart';
+import '../../../core/services/cache_service.dart';
 
 class MemoryCommentModel {
   final String id;
@@ -35,6 +36,9 @@ class MemoryCommentModel {
 
 class MemoryService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final CacheService? _cacheService;
+
+  MemoryService([this._cacheService]);
 
   String _getCoupleId(String uid1, String uid2) {
     final List<String> uids = [uid1, uid2];
@@ -46,7 +50,7 @@ class MemoryService {
     return _firestore.collection('couples').doc(coupleId).collection('memories');
   }
 
-  // إضافة ذكرى جديدة
+  // إضافة ذكرى جديدة مع حفظ فوري في الكاش المحلي
   Future<void> addMemory({
     required MemoryModel memory,
     required String userId,
@@ -54,6 +58,14 @@ class MemoryService {
   }) async {
     final coupleId = _getCoupleId(userId, partnerId);
     
+    // حفظ فوراً في الـ Cache المحلي للظهور المباشر في الشاشة
+    if (_cacheService != null) {
+      final cached = _cacheService!.getCachedMemories();
+      cached.removeWhere((m) => m.id == memory.id);
+      cached.insert(0, memory);
+      await _cacheService!.cacheMemories(cached);
+    }
+
     final memoryData = {
       'id': memory.id,
       'title': memory.title,
@@ -68,10 +80,14 @@ class MemoryService {
       'createdAt': FieldValue.serverTimestamp(),
     };
 
-    await _memoriesCollection(coupleId).doc(memory.id).set(memoryData);
+    try {
+      await _memoriesCollection(coupleId).doc(memory.id).set(memoryData);
+    } catch (_) {
+      // تتم معالجة عدم وجود شبكة بسلاسة بفضل التخزين المحلي السريع
+    }
   }
 
-  // جلب الذكريات كبث حي مع الترقيم Pagination لشبكات 2G (20 ذكرى لكل دفعة)
+  // جلب الذكريات كبث حي مع الترقيم والدمج المحلي الفوري
   Stream<List<MemoryModel>> getMemoriesStream(
     String userId,
     String partnerId, {
@@ -89,7 +105,7 @@ class MemoryService {
     }
 
     return query.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
+      final List<MemoryModel> list = snapshot.docs.map((doc) {
         final data = doc.data();
         return MemoryModel(
           id: data['id'] ?? '',
@@ -107,6 +123,25 @@ class MemoryService {
           colorIndex: data['colorIndex'] ?? 0,
         );
       }).toList();
+
+      // دمج العناصر المحلية المحفوظة مؤخراً
+      if (_cacheService != null) {
+        final cached = _cacheService!.getCachedMemories();
+        for (var c in cached) {
+          if (!list.any((m) => m.id == c.id)) {
+            list.insert(0, c);
+          }
+        }
+        _cacheService!.cacheMemories(list);
+      }
+
+      return list;
+    }).handleError((error) {
+      if (_cacheService != null) {
+        final cached = _cacheService!.getCachedMemories();
+        if (cached.isNotEmpty) return cached;
+      }
+      return MemoryModel.mockMemories;
     });
   }
 

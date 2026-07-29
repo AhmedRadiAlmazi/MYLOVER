@@ -11,7 +11,7 @@ class StorageService {
   /// رفع ملف إلى Firebase Storage وإعادة رابط التحميل (Download URL)
   Future<String> uploadFile(File file, String folderName) async {
     try {
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.path.split(RegExp(r'[/\\]')).last}';
       final ref = _storage.ref().child(folderName).child(fileName);
       final uploadTask = await ref.putFile(file);
       return await uploadTask.ref.getDownloadURL();

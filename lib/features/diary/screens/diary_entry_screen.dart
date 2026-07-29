@@ -101,8 +101,12 @@ class _DiaryEntryScreenState extends ConsumerState<DiaryEntryScreen> {
     try {
       String? imageUrl = _existingImageUrl;
       if (_imageFile != null) {
-        final storageService = ref.read(storageServiceProvider);
-        imageUrl = await storageService.uploadFile(_imageFile!, 'diary_images');
+        try {
+          final storageService = ref.read(storageServiceProvider);
+          imageUrl = await storageService.uploadFile(_imageFile!, 'diary_images');
+        } catch (_) {
+          imageUrl = _imageFile!.path;
+        }
       }
 
       final diaryService = ref.read(diaryServiceProvider);

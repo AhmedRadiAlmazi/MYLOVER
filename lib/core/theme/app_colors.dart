@@ -3,114 +3,119 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // ── Backgrounds ─────────────────────────────────────
-  static const Color background = Color(0xFF080810);
-  static const Color surface = Color(0xFF10101C);
-  static const Color card = Color(0xFF1A1A2E);
-  static const Color cardLight = Color(0xFF22223A);
-  static const Color overlay = Color(0xFF0D0D1A);
+  // ── Backgrounds & Cards ──────────────────────────────
+  static const Color background = Color(0xFFFFF9FB); // #FFF9FB
+  static const Color surface = Color(0xFFFFF4F8);
+  static const Color card = Color(0xFFFFFFFF);     // #FFFFFF
+  static const Color cardLight = Color(0xFFFFF0F5);
+  static const Color overlay = Color(0xFF4A1A2E);
 
-  // ── Brand Purple ─────────────────────────────────────
-  static const Color primary = Color(0xFFB57BEE);
-  static const Color primaryDark = Color(0xFF8B3FD9);
-  static const Color primaryLight = Color(0xFFD4A4FF);
-  static const Color primaryContainer = Color(0xFF2D1B4E);
+  // ── Brand Primary (#A64D79) ──────────────────────────
+  static const Color primary = Color(0xFFA64D79);
+  static const Color primaryDark = Color(0xFF7D3257);
+  static const Color primaryLight = Color(0xFFC8749E);
+  static const Color primaryContainer = Color(0xFFFAF0F4);
 
-  // ── Brand Rose ───────────────────────────────────────
-  static const Color secondary = Color(0xFFFF6B9D);
-  static const Color secondaryDark = Color(0xFFE5447A);
-  static const Color secondaryLight = Color(0xFFFF9CBB);
-  static const Color secondaryContainer = Color(0xFF4A1A2E);
+  // ── Secondary Brand / Buttons (#D98CA3) ──────────────
+  static const Color secondary = Color(0xFFD98CA3);
+  static const Color secondaryDark = Color(0xFFB86880);
+  static const Color secondaryLight = Color(0xFFF5B8C9);
+  static const Color secondaryContainer = Color(0xFFFFF0F5);
+  static const Color onSecondary = Color(0xFF3D232E);
 
-  // ── Accent Gold ──────────────────────────────────────
-  static const Color accent = Color(0xFFFFD700);
-  static const Color accentSoft = Color(0xFFFFE57F);
-  static const Color accentContainer = Color(0xFF3A3000);
+  // ── Hearts & Reactions (#E75480) ────────────────────
+  static const Color heart = Color(0xFFE75480);
+  static const Color heartLight = Color(0xFFFF85A6);
 
-  // ── Text ─────────────────────────────────────────────
-  static const Color textPrimary = Color(0xFFF0F0FF);
-  static const Color textSecondary = Color(0xFFB0B0CC);
-  static const Color textHint = Color(0xFF70708A);
-  static const Color textDisabled = Color(0xFF404050);
+  // ── Luxury Accent Gold (#D4AF37) ────────────────────
+  static const Color accent = Color(0xFFD4AF37);
+  static const Color accentSoft = Color(0xFFF4D068);
+  static const Color accentContainer = Color(0xFFFFF8E7);
+
+  // ── Text Colors ─────────────────────────────────────
+  static const Color textPrimary = Color(0xFF2D1E27);
+  static const Color textSecondary = Color(0xFF6A5260);
+  static const Color textHint = Color(0xFF9E8694);
+  static const Color textDisabled = Color(0xFFD2C4CC);
 
   // ── Utility ──────────────────────────────────────────
-  static const Color divider = Color(0xFF252535);
-  static const Color success = Color(0xFF66BB6A);
-  static const Color successContainer = Color(0xFF1A3A1A);
-  static const Color error = Color(0xFFEF5350);
-  static const Color errorContainer = Color(0xFF3A1515);
-  static const Color warning = Color(0xFFFFA726);
-  static const Color warningContainer = Color(0xFF3A2800);
-  static const Color info = Color(0xFF42A5F5);
+  static const Color divider = Color(0xFFF0E2E7);
+  static const Color success = Color(0xFF4CAF50);
+  static const Color successContainer = Color(0xFFE8F5E9);
+  static const Color error = Color(0xFFE53935);
+  static const Color errorContainer = Color(0xFFFFEBEE);
+  static const Color warning = Color(0xFFFFA000);
+  static const Color warningContainer = Color(0xFFFFF8E1);
+  static const Color info = Color(0xFF1E88E5);
 
   // ── Online Status ────────────────────────────────────
-  static const Color online = Color(0xFF66BB6A);
-  static const Color offline = Color(0xFF616161);
-  static const Color away = Color(0xFFFFA726);
+  static const Color online = Color(0xFF4CAF50);
+  static const Color offline = Color(0xFF9E8694);
+  static const Color away = Color(0xFFFFA000);
 
   // ── Gradients ────────────────────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF8B3FD9), Color(0xFFFF6B9D)],
+    colors: [Color(0xFFA64D79), Color(0xFFE75480)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient primaryGradientVertical = LinearGradient(
-    colors: [Color(0xFF8B3FD9), Color(0xFFFF6B9D)],
+    colors: [Color(0xFFA64D79), Color(0xFFE75480)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
 
   static const LinearGradient backgroundGradient = LinearGradient(
-    colors: [Color(0xFF080810), Color(0xFF10101C)],
+    colors: [Color(0xFFFFF9FB), Color(0xFFFFF0F5)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
 
   static const LinearGradient cardGradient = LinearGradient(
-    colors: [Color(0xFF1A1A2E), Color(0xFF141425)],
+    colors: [Color(0xFFFFFFFF), Color(0xFFFFF7FA)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient roseGradient = LinearGradient(
-    colors: [Color(0xFFFF6B9D), Color(0xFFFF9CBB)],
+    colors: [Color(0xFFE75480), Color(0xFFD98CA3)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient purpleGradient = LinearGradient(
-    colors: [Color(0xFF8B3FD9), Color(0xFFB57BEE)],
+    colors: [Color(0xFFA64D79), Color(0xFFC8749E)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient goldGradient = LinearGradient(
-    colors: [Color(0xFFFFD700), Color(0xFFFFB300)],
+    colors: [Color(0xFFD4AF37), Color(0xFFF4D068)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient deepNightGradient = LinearGradient(
-    colors: [Color(0xFF080810), Color(0xFF1A0A2E), Color(0xFF0A0A20)],
+    colors: [Color(0xFF1E1018), Color(0xFF2D1524), Color(0xFF180A13)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient twilightGradient = LinearGradient(
-    colors: [Color(0xFF1A0A3E), Color(0xFF3D1A6E), Color(0xFF8B3FD9)],
+    colors: [Color(0xFF2D1524), Color(0xFF52233C), Color(0xFFA64D79)],
     begin: Alignment.bottomCenter,
     end: Alignment.topCenter,
   );
 
   static const LinearGradient sunsetGradient = LinearGradient(
-    colors: [Color(0xFF8B3FD9), Color(0xFFFF6B9D), Color(0xFFFFD700)],
+    colors: [Color(0xFFA64D79), Color(0xFFE75480), Color(0xFFD4AF37)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   // ── Glass Effect ─────────────────────────────────────
-  static Color glassWhite = Colors.white.withOpacity(0.05);
-  static Color glassBorder = Colors.white.withOpacity(0.1);
-  static Color glassPrimary = const Color(0xFFB57BEE).withOpacity(0.1);
+  static Color glassWhite = Colors.white.withOpacity(0.85);
+  static Color glassBorder = const Color(0xFFA64D79).withOpacity(0.15);
+  static Color glassPrimary = const Color(0xFFA64D79).withOpacity(0.08);
 }
